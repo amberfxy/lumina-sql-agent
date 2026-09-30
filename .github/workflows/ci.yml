@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "ruff>=0.8.0"
+      - run: ruff check .
+      - run: ruff format --check .
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q --cov=src --cov=api --cov=evaluation --cov-report=term-missing
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lumina
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lumina"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      LUMINA_INTEGRATION: "1"
+      POSTGRES_HOST: localhost
+      POSTGRES_PASSWORD: postgres
+      REDIS_URL: redis://localhost:6379/0
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Seed database
+        run: |
+          for f in db/init/*.sql; do
+            psql -h localhost -U postgres -d lumina -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - run: pytest -q -m integration
+      - name: Validate evaluation dataset
+        run: python -m evaluation.run_eval --validate-gold
+
+  config-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Prometheus config and alert rules
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/observability/prometheus:/etc/prometheus" \
+            prom/prometheus:v2.55.1 check config /etc/prometheus/prometheus.yml
+      - name: Render Kubernetes manifests
+        run: kubectl kustomize deploy/k8s > /dev/null
+      - name: Validate docker-compose
+        run: docker compose config --quiet
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: base
+          tags: lumina-sql-agent:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test image
+        run: |
+          docker run -d --name api -p 8000:8000 lumina-sql-agent:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/livez && exit 0
+            sleep 1
+          done
+          docker logs api
+          exit 1
