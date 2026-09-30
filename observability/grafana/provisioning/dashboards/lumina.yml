@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: lumina
+    folder: LuminaSQL
+    type: file
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards

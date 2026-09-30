@@ -1,0 +1,86 @@
+groups:
+  - name: lumina-api
+    rules:
+      - alert: LuminaApiDown
+        expr: up{job="lumina-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: LuminaSQL API target is down
+          description: Prometheus has not scraped {{ $labels.instance }} for over 1 minute.
+
+      - alert: LuminaHighHttpErrorRate
+        expr: |
+          sum(rate(lumina_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(lumina_http_requests_total[5m])), 1e-9) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than 5% of API requests are failing
+          description: 5xx ratio is {{ $value | humanizePercentage }} over the last 5 minutes.
+
+  - name: lumina-agent
+    rules:
+      - alert: LuminaAgentFailureRateHigh
+        expr: |
+          sum(rate(lumina_agent_runs_total{outcome="failed"}[15m]))
+            / clamp_min(sum(rate(lumina_agent_runs_total[15m])), 1e-9) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent fails to produce a working query for more than 30% of questions
+          description: Failure ratio is {{ $value | humanizePercentage }}; check the LLM provider and schema drift.
+
+      - alert: LuminaAgentLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(lumina_agent_run_duration_seconds_bucket[5m]))) > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent p95 latency above 20s
+          description: p95 end-to-end agent latency is {{ $value | humanizeDuration }}.
+
+      - alert: LuminaSelfCorrectionSpike
+        expr: |
+          sum(rate(lumina_agent_execution_attempts_sum[30m]))
+            / clamp_min(sum(rate(lumina_agent_execution_attempts_count[30m])), 1e-9) > 1.5
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: Queries need unusually many self-correction retries
+          description: Average execution attempts per run is {{ $value }}; a schema change or model regression is likely.
+
+      - alert: LuminaLlmErrors
+        expr: sum(rate(lumina_llm_calls_total{status="error"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: LLM provider calls are failing
+          description: "{{ $value }} LLM errors per second over the last 5 minutes."
+
+  - name: lumina-dependencies
+    rules:
+      - alert: LuminaCacheUnavailable
+        expr: sum(rate(lumina_cache_requests_total{result="error"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: Redis cache is unavailable; serving without cache
+          description: Requests still succeed, but every question now calls the LLM.
+
+      - alert: LuminaDbLatencyP95High
+        expr: |
+          histogram_quantile(0.95, sum by (le, backend) (rate(lumina_db_query_duration_seconds_bucket[5m]))) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Database query p95 latency above 5s on {{ $labels.backend }}
+          description: Generated queries may be missing indexes or scanning large tables.
