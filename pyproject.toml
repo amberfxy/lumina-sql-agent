@@ -1,0 +1,22 @@
+[project]
+name = "lumina-sql-agent"
+version = "1.1.0"
+description = "Self-hosted NL-to-SQL/PartiQL agent for PostgreSQL and DynamoDB, with a self-correcting execution loop"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["B008"]  # FastAPI's Depends() in argument defaults is idiomatic
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "src", "evaluation", "config"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires running PostgreSQL and Redis (set LUMINA_INTEGRATION=1)"]
+filterwarnings = ["ignore::DeprecationWarning"]

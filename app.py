@@ -73,11 +73,7 @@ with st.sidebar:
         options=["PostgreSQL", "DynamoDB"],
         horizontal=True,
     )
-    backend = (
-        DatabaseBackend.POSTGRES
-        if backend_label == "PostgreSQL"
-        else DatabaseBackend.DYNAMODB
-    )
+    backend = DatabaseBackend.POSTGRES if backend_label == "PostgreSQL" else DatabaseBackend.DYNAMODB
     allow_mutations = st.toggle("Allow mutating statements", value=False)
     api_base_url = st.text_input("API base URL", value=settings.api_base_url)
     st.caption(f"LLM provider: `{settings.llm_provider.value}`")
@@ -111,53 +107,52 @@ if prompt:
         "query": prompt,
         "backend": backend.value,
         "allow_mutations": allow_mutations,
-        "stream": True,
     }
 
     try:
-        with httpx.Client(timeout=None) as client:
-            with client.stream(
+        with (
+            httpx.Client(timeout=None) as client,
+            client.stream(
                 "POST",
                 f"{api_base_url.rstrip('/')}/api/v1/query/stream",
                 json=payload,
                 headers={"Accept": "text/event-stream"},
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if not line or not line.startswith("data: "):
-                        continue
+            ) as response,
+        ):
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line or not line.startswith("data: "):
+                    continue
 
-                    event = json.loads(line.removeprefix("data: "))
-                    event_type = event.get("type")
-                    content = event.get("content")
+                event = json.loads(line.removeprefix("data: "))
+                event_type = event.get("type")
+                content = event.get("content")
 
-                    if event_type == "status":
-                        stream_placeholder.info(content)
-                    elif event_type == "schema":
-                        with st.expander("Pruned schema context", expanded=False):
-                            st.markdown(content)
-                    elif event_type == "llm_token":
-                        streamed_text += content
-                        stream_placeholder.markdown(
-                            f"**LLM stream**\n\n```\n{streamed_text}\n```"
-                        )
-                    elif event_type == "query":
-                        final_query = content
-                        query_placeholder.code(final_query, language="sql")
-                    elif event_type == "error":
-                        debug_events.append(content)
-                        with debug_placeholder.container():
-                            st.warning("Self-debug loop intercepted an execution error")
-                            for item in debug_events:
-                                st.markdown(
-                                    f'<div class="debug-card"><b>Attempt {item["attempt"]}</b><br/>'
-                                    f'<code>{item["query"]}</code><br/><br/>'
-                                    f'<span style="color:#fca5a5;">{item["raw_error"]}</span></div>',
-                                    unsafe_allow_html=True,
-                                )
-                    elif event_type == "result":
-                        agent_result = content
-                        st.session_state.last_result = content
+                if event_type == "status":
+                    stream_placeholder.info(content)
+                elif event_type == "schema":
+                    with st.expander("Pruned schema context", expanded=False):
+                        st.markdown(content)
+                elif event_type == "llm_token":
+                    streamed_text += content
+                    stream_placeholder.markdown(f"**LLM stream**\n\n```\n{streamed_text}\n```")
+                elif event_type == "query":
+                    final_query = content
+                    query_placeholder.code(final_query, language="sql")
+                elif event_type == "error":
+                    debug_events.append(content)
+                    with debug_placeholder.container():
+                        st.warning("Self-debug loop intercepted an execution error")
+                        for item in debug_events:
+                            st.markdown(
+                                f'<div class="debug-card"><b>Attempt {item["attempt"]}</b><br/>'
+                                f"<code>{item['query']}</code><br/><br/>"
+                                f'<span style="color:#fca5a5;">{item["raw_error"]}</span></div>',
+                                unsafe_allow_html=True,
+                            )
+                elif event_type == "result":
+                    agent_result = content
+                    st.session_state.last_result = content
 
     except httpx.HTTPError as exc:
         st.error(f"API request failed: {exc}")

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -16,6 +18,7 @@ from sqlalchemy.engine import Engine, Result
 from sqlalchemy.exc import SQLAlchemyError
 
 from config import DatabaseBackend, Settings, get_settings
+from src.metrics import DB_LATENCY, DB_QUERIES
 
 logger = logging.getLogger(__name__)
 
@@ -71,53 +74,68 @@ class DatabaseExecutor:
         r"\b(insert|update|delete|drop|alter|truncate|create|grant|revoke)\b",
         re.IGNORECASE,
     )
+    _BLOCKED_ERROR = "Mutation blocked by safety policy"
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._postgres_engine: Engine | None = None
         self._dynamodb_client: Any | None = None
+        self._init_lock = threading.Lock()
 
     @property
     def postgres_engine(self) -> Engine:
         if self._postgres_engine is None:
-            self._postgres_engine = create_engine(
-                self.settings.postgres_url,
-                pool_pre_ping=True,
-                pool_size=5,
-                max_overflow=10,
-                future=True,
-            )
-            logger.info(
-                "Initialized PostgreSQL engine host=%s db=%s",
-                self.settings.postgres_host,
-                self.settings.postgres_db,
-            )
+            with self._init_lock:
+                if self._postgres_engine is None:
+                    self._postgres_engine = create_engine(
+                        self.settings.postgres_url,
+                        pool_pre_ping=True,
+                        pool_size=self.settings.postgres_pool_size,
+                        max_overflow=self.settings.postgres_max_overflow,
+                        connect_args={
+                            "connect_timeout": self.settings.postgres_connect_timeout_seconds,
+                            "options": f"-c statement_timeout={self.settings.postgres_statement_timeout_ms}",
+                        },
+                    )
+                    logger.info(
+                        "Initialized PostgreSQL engine host=%s db=%s",
+                        self.settings.postgres_host,
+                        self.settings.postgres_db,
+                    )
         return self._postgres_engine
 
     @property
     def dynamodb_client(self) -> Any:
         if self._dynamodb_client is None:
-            session_kwargs: dict[str, Any] = {"region_name": self.settings.aws_region}
-            if self.settings.aws_access_key_id and self.settings.aws_secret_access_key:
-                session_kwargs["aws_access_key_id"] = self.settings.aws_access_key_id.get_secret_value()
-                session_kwargs["aws_secret_access_key"] = (
-                    self.settings.aws_secret_access_key.get_secret_value()
-                )
-
-            session = boto3.session.Session(**session_kwargs)
-            client_kwargs: dict[str, Any] = {
-                "config": BotoConfig(retries={"max_attempts": 3, "mode": "standard"})
-            }
-            if self.settings.dynamodb_endpoint_url:
-                client_kwargs["endpoint_url"] = self.settings.dynamodb_endpoint_url
-
-            self._dynamodb_client = session.client("dynamodb", **client_kwargs)
-            logger.info(
-                "Initialized DynamoDB client region=%s endpoint=%s",
-                self.settings.aws_region,
-                self.settings.dynamodb_endpoint_url or "aws",
-            )
+            with self._init_lock:
+                if self._dynamodb_client is None:
+                    self._dynamodb_client = self._create_dynamodb_client()
         return self._dynamodb_client
+
+    def _create_dynamodb_client(self) -> Any:
+        session_kwargs: dict[str, Any] = {"region_name": self.settings.aws_region}
+        if self.settings.aws_access_key_id and self.settings.aws_secret_access_key:
+            session_kwargs["aws_access_key_id"] = self.settings.aws_access_key_id.get_secret_value()
+            session_kwargs["aws_secret_access_key"] = self.settings.aws_secret_access_key.get_secret_value()
+
+        session = boto3.session.Session(**session_kwargs)
+        client_kwargs: dict[str, Any] = {
+            "config": BotoConfig(
+                retries={"max_attempts": 3, "mode": "standard"},
+                connect_timeout=5,
+                read_timeout=15,
+            )
+        }
+        if self.settings.dynamodb_endpoint_url:
+            client_kwargs["endpoint_url"] = self.settings.dynamodb_endpoint_url
+
+        client = session.client("dynamodb", **client_kwargs)
+        logger.info(
+            "Initialized DynamoDB client region=%s endpoint=%s",
+            self.settings.aws_region,
+            self.settings.dynamodb_endpoint_url or "aws",
+        )
+        return client
 
     def execute(
         self,
@@ -139,13 +157,17 @@ class DatabaseExecutor:
 
         logger.info("Executing query backend=%s query=%r", backend.value, normalized_query[:500])
 
+        started = time.perf_counter()
+        status = "ok"
         try:
             if backend == DatabaseBackend.POSTGRES:
                 return self._execute_postgres(normalized_query, allow_mutations=allow_mutations, parameters=parameters)
             return self._execute_dynamodb(normalized_query, allow_mutations=allow_mutations, parameters=parameters)
-        except DatabaseExecutionError:
+        except DatabaseExecutionError as exc:
+            status = "blocked" if exc.raw_error == self._BLOCKED_ERROR else "error"
             raise
         except Exception as exc:  # noqa: BLE001 - surface unknown failures uniformly
+            status = "error"
             raw_error = repr(exc)
             logger.exception("Unexpected execution failure backend=%s", backend.value)
             raise DatabaseExecutionError(
@@ -154,24 +176,22 @@ class DatabaseExecutor:
                 backend=backend,
                 query=normalized_query,
             ) from exc
+        finally:
+            DB_QUERIES.labels(backend=backend.value, status=status).inc()
+            DB_LATENCY.labels(backend=backend.value).observe(time.perf_counter() - started)
 
-    def health_check(self, backend: DatabaseBackend) -> ExecutionResult:
-        """Lightweight connectivity probe used by the API gateway."""
-        if backend == DatabaseBackend.POSTGRES:
-            query = "SELECT 1 AS ok"
-        else:
-            query = "SELECT 1"
-
+    def health_check(self, backend: DatabaseBackend) -> dict[str, Any]:
+        """Connectivity probe used by health/readiness endpoints (not counted in query metrics)."""
+        started = time.perf_counter()
         try:
-            return self.execute(query, backend=backend, allow_mutations=False)
-        except DatabaseExecutionError as exc:
-            return ExecutionResult(
-                success=False,
-                backend=backend,
-                query=query,
-                error=str(exc),
-                raw_error=exc.raw_error,
-            )
+            if backend == DatabaseBackend.POSTGRES:
+                with self.postgres_engine.connect() as connection:
+                    connection.execute(text("SELECT 1"))
+            else:
+                self.dynamodb_client.list_tables(Limit=1)
+        except Exception as exc:  # noqa: BLE001 - any failure means "not healthy"
+            return {"success": False, "error": f"{exc.__class__.__name__}: {exc}"[:500]}
+        return {"success": True, "latency_ms": round((time.perf_counter() - started) * 1000, 2)}
 
     def _execute_postgres(
         self,
@@ -183,17 +203,22 @@ class DatabaseExecutor:
         if not allow_mutations and self._MUTATING_PATTERN.search(query):
             raise DatabaseExecutionError(
                 message="Mutating SQL statements are disabled by default.",
-                raw_error="Mutation blocked by safety policy",
+                raw_error=self._BLOCKED_ERROR,
                 backend=DatabaseBackend.POSTGRES,
                 query=query,
             )
 
+        max_rows = self.settings.max_result_rows
         try:
             with self.postgres_engine.connect() as connection:
+                if not allow_mutations:
+                    # Database-enforced guard: catches writes the keyword filter misses
+                    # (e.g. nextval(), side-effecting functions).
+                    connection.execute(text("SET TRANSACTION READ ONLY"))
                 result: Result[Any] = connection.execute(text(query), parameters or {})
                 if result.returns_rows:
-                    rows = [dict(row._mapping) for row in result.fetchmany(500)]
-                    columns = list(result.keys())
+                    columns = self._dedupe_columns(list(result.keys()))
+                    rows = [dict(zip(columns, tuple(row), strict=True)) for row in result.fetchmany(max_rows)]
                     connection.commit()
                     return ExecutionResult(
                         success=True,
@@ -202,7 +227,7 @@ class DatabaseExecutor:
                         rows=rows,
                         row_count=len(rows),
                         columns=columns,
-                        metadata={"truncated_to": 500},
+                        metadata={"truncated_to": max_rows},
                     )
 
                 connection.commit()
@@ -236,7 +261,7 @@ class DatabaseExecutor:
         if not allow_mutations and self._MUTATING_PATTERN.search(statement):
             raise DatabaseExecutionError(
                 message="Mutating PartiQL statements are disabled by default.",
-                raw_error="Mutation blocked by safety policy",
+                raw_error=self._BLOCKED_ERROR,
                 backend=DatabaseBackend.DYNAMODB,
                 query=query,
             )
@@ -244,14 +269,12 @@ class DatabaseExecutor:
         try:
             request: dict[str, Any] = {"Statement": statement}
             if parameters:
-                request["Parameters"] = [
-                    self._to_dynamodb_parameter(key, value) for key, value in parameters.items()
-                ]
+                request["Parameters"] = [self._to_dynamodb_parameter(key, value) for key, value in parameters.items()]
 
             response = self.dynamodb_client.execute_statement(**request)
             items = response.get("Items", [])
             rows = [self._deserialize_dynamodb_item(item) for item in items]
-            columns = sorted({column for row in rows for column in row.keys()}) if rows else []
+            columns = sorted({column for row in rows for column in row}) if rows else []
 
             return ExecutionResult(
                 success=True,
@@ -274,6 +297,17 @@ class DatabaseExecutor:
                 backend=DatabaseBackend.DYNAMODB,
                 query=statement,
             ) from exc
+
+    @staticmethod
+    def _dedupe_columns(columns: list[str]) -> list[str]:
+        """Make result column names unique (e.g. `c.name, p.name` -> `name, name_2`) so no values are dropped."""
+        seen: dict[str, int] = {}
+        unique: list[str] = []
+        for column in columns:
+            count = seen.get(column, 0) + 1
+            seen[column] = count
+            unique.append(column if count == 1 else f"{column}_{count}")
+        return unique
 
     @staticmethod
     def _normalize_partiql(query: str) -> str:
@@ -358,10 +392,7 @@ class DatabaseExecutor:
         if "L" in value:
             return [DatabaseExecutor._deserialize_dynamodb_value(item) for item in value["L"]]
         if "M" in value:
-            return {
-                key: DatabaseExecutor._deserialize_dynamodb_value(item)
-                for key, item in value["M"].items()
-            }
+            return {key: DatabaseExecutor._deserialize_dynamodb_value(item) for key, item in value["M"].items()}
         return value
 
     def close(self) -> None:
