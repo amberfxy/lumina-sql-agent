@@ -85,9 +85,11 @@ multiplies cost; so does a drop in cache hit ratio.
 ## Procedures
 
 ### Deploy / rollback
-`kubectl apply -k deploy/k8s` rolls out with `maxUnavailable: 0`, a 5 s `preStop` delay, and a
-100 s grace period (longer than the agent deadline). Measured: a rolling restart under
-continuous traffic dropped 0 of 1,500 requests. Roll back with
+`kubectl apply -k deploy/k8s` rolls out with `maxUnavailable: 0`, a 10 s `preStop` drain
+(`Connection: close` on every response, readiness 503), and a 105 s grace period (longer than
+the agent deadline). Measured: three rolling restarts under continuous traffic dropped 0 of
+4,500 requests. A pod stuck reporting `{"status": "draining"}` on `/readyz` has a stale
+`/tmp/lumina-draining`; restarting the container clears it. Roll back with
 `kubectl -n lumina rollout undo deployment/lumina-api`.
 
 ### Rotate database credentials

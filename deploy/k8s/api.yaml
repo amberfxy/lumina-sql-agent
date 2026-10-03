@@ -38,8 +38,8 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: /metrics
     spec:
-      # preStop (5s) + AGENT_DEADLINE_SECONDS (90s) + margin, so a rollout lets in-flight runs finish.
-      terminationGracePeriodSeconds: 100
+      # preStop (10s) + AGENT_DEADLINE_SECONDS (90s) + margin, so a rollout lets in-flight runs finish.
+      terminationGracePeriodSeconds: 105
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -81,9 +81,13 @@ spec:
             failureThreshold: 3
           lifecycle:
             preStop:
-              # Give the Service time to remove this endpoint before uvicorn stops accepting connections.
+              # Drain (Connection: close on every response, readiness 503) while the Service
+              # removes this endpoint, then let uvicorn stop. The path must match DRAIN_FILE.
               exec:
-                command: ["python", "-c", "import time; time.sleep(5)"]
+                command:
+                  - python
+                  - -c
+                  - "import pathlib, time; pathlib.Path('/tmp/lumina-draining').touch(); time.sleep(10)"
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { cpu: "1", memory: 512Mi }

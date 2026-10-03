@@ -208,7 +208,10 @@ jobs:
       - name: Rolling restart under traffic drops no requests
         run: |
           scripts/k8s_disruption_test.sh rollout | tee /tmp/rollout.json
-          grep -q '"error_rate": 0.0' /tmp/rollout.json
+          if ! grep -q '"error_rate": 0.0' /tmp/rollout.json; then
+            echo "::error title=Rolling restart dropped requests::$(cat /tmp/rollout.json)"
+            exit 1
+          fi
       - name: Dump state on failure
         if: failure()
         run: |

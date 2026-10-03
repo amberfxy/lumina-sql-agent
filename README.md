@@ -18,7 +18,7 @@ blips are retried without the model; unsafe queries stop immediately.
 | Failure semantics | 30/30 deterministic agent scenarios (LLM faults, hallucinations, unsafe output, timeouts) |
 | Capacity (1 vCPU replica, mock LLM 400 ms) | about 180-200 req/s at saturation; knee between 100 and 150 concurrent requests |
 | Query cache | hit p50 2.6 ms vs 408 ms uncached, 0 LLM tokens; miss overhead within noise |
-| Disruption (kind, 2 replicas) | 0/1500 failed requests during a rolling restart; 11/1500 on a hard SIGKILL |
+| Disruption (kind, 2 replicas) | 0/4500 failed requests across 3 rolling restarts (preStop drain); 9/1500 on a hard SIGKILL |
 | Tests | 287 passing, 90% line coverage (unit + Postgres/Redis/DynamoDB Local integration) |
 
 Real-model accuracy is **not** reported yet: the harness and 97-case dataset are ready

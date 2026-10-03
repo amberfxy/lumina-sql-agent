@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-10-03T04:30:00+00:00",
+  "environment": "kind v0.24.0 single node on Docker Desktop; deploy/k8s-testing overlay (2 API replicas, 1 vCPU / 512Mi limits, in-cluster mock LLM 400ms +/-20%)",
+  "traffic": "scripts/load_test.py from an in-cluster pod: 10 closed-loop clients, one keep-alive connection each, 1500 requests per run",
+  "command": "scripts/k8s_disruption_test.sh <mode>",
+  "change_under_test": "preStop drain: the hook creates DRAIN_FILE, the API answers every request with Connection: close and /readyz 503 for 10s before SIGTERM (previously a plain 5s sleep). Motivated by one CI rollout run that dropped requests on a GitHub runner; the drop did not reproduce locally in 4 runs (6000 requests) before the change.",
+  "runs": {
+    "rollout": {
+      "disruption": "kubectl rollout restart (maxUnavailable 0, preStop drain 10s), 3 runs",
+      "requests": 4500,
+      "status_counts": {
+        "200": 4500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms_per_run": [
+        {"p50": 415.4, "p95": 484.5, "p99": 491.7},
+        {"p50": 409.7, "p95": 483.0, "p99": 491.5},
+        {"p50": 413.9, "p95": 483.1, "p99": 492.0}
+      ]
+    },
+    "delete": {
+      "disruption": "graceful pod delete",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms": {"p50": 413.1, "p95": 483.7, "p99": 492.6}
+    },
+    "kill": {
+      "disruption": "kubectl delete --grace-period=0 --force (kubelet still sends SIGTERM)",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms": {"p50": 409.2, "p95": 486.6, "p99": 495.6}
+    },
+    "crash": {
+      "disruption": "SIGKILL via crictl stop --timeout 0 (no drain)",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1491,
+        "RemoteProtocolError": 4,
+        "ConnectError": 5
+      },
+      "error_rate": 0.6,
+      "latency_ok_ms": {"p50": 411.7, "p95": 483.5, "p99": 492.2}
+    }
+  },
+  "drain_check": {
+    "keepalive_response_connection_header_before": null,
+    "keepalive_response_connection_header_while_draining": "close",
+    "readyz_while_draining": "503 {\"status\": \"draining\"}"
+  }
+}

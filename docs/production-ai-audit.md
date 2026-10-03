@@ -121,5 +121,5 @@ and in `eval/results/`.
 | Observability | PARTIAL | DONE | Token/cost, failures by category, unsafe rejections by layer, in-flight/queue gauges, admission wait; 15 alert rules; request ID across HTTP, LLM, and SQL |
 | Evaluation quality | PARTIAL | DONE | Four suites, negative categories, JSON/CSV reports, deterministic suites in CI |
 | Cost measurement | MISSING | DONE | Provider-reported tokens, cost per request and per run, spend alert |
-| Deployment | PARTIAL | DONE | Reader role in k8s, superuser secret isolated, NetworkPolicy, grace period covers the deadline; 0/1500 failed requests during a rolling restart |
+| Deployment | PARTIAL | DONE | Reader role in k8s, superuser secret isolated, NetworkPolicy, grace period covers the deadline, preStop drain; 0/4500 failed requests across 3 rolling restarts |
 | Testing | PARTIAL | DONE | 287 tests (90% coverage, including DynamoDB Local integration), security job, scripted eval, container e2e and kind jobs in CI |

@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from api.main import app, get_agent
+from api.main import Runtime, app, get_agent
 from eval.scripted_llm import ScriptedLLM
 from src.admission import AdmissionRejected, RateLimiter
 from src.agent import LuminaSQLAgent
@@ -46,6 +46,26 @@ def test_readyz_reports_not_ready_without_database(client, monkeypatch):
     response = client.get("/readyz")
     assert response.status_code == 503
     assert response.json()["status"] == "not_ready"
+
+
+def test_draining_closes_keepalive_connections_and_fails_readiness(client, monkeypatch, tmp_path):
+    runtime = client.app.state.runtime
+    monkeypatch.setattr(runtime, "drain_file", tmp_path / "draining")
+    assert "connection" not in client.post("/api/v1/query", json={"query": "q"}).headers
+
+    runtime.drain_file.touch()
+    response = client.post("/api/v1/query", json={"query": "q"})
+    assert response.status_code == 200
+    assert response.headers["connection"] == "close"
+    assert client.get("/readyz").status_code == 503
+    assert client.get("/readyz").json() == {"status": "draining"}
+
+
+def test_stale_drain_marker_is_cleared_on_startup(settings, tmp_path):
+    marker = tmp_path / "draining"
+    marker.touch()
+    Runtime(settings.model_copy(update={"drain_file": str(marker)}))
+    assert not marker.exists()
 
 
 def test_sync_query(client):

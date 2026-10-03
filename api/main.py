@@ -11,6 +11,7 @@ import time
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -46,8 +47,15 @@ class Runtime:
             settings.max_concurrent_requests, settings.max_queued_requests, settings.queue_timeout_seconds
         )
         self.rate_limiter = RateLimiter(settings.rate_limit_per_minute)
+        self.drain_file = Path(settings.drain_file)
+        # A liveness-triggered restart runs preStop but keeps the pod's /tmp volume.
+        self.drain_file.unlink(missing_ok=True)
         self._agent: LuminaSQLAgent | None = None
         self._agent_lock = threading.Lock()
+
+    @property
+    def draining(self) -> bool:
+        return self.drain_file.exists()
 
     def get_agent(self) -> LuminaSQLAgent:
         if self._agent is None:
@@ -127,6 +135,10 @@ async def request_context(request: Request, call_next: Any) -> Response:
         response = await call_next(request)
         status = response.status_code
         response.headers["X-Request-ID"] = request_id
+        if runtime and runtime.draining:
+            # Clients reconnect through the Service while this pod still listens, instead of
+            # racing the connection close that uvicorn performs on SIGTERM.
+            response.headers["Connection"] = "close"
         return response
     finally:
         route = request.scope.get("route")
@@ -222,7 +234,9 @@ def livez() -> dict[str, str]:
 
 @app.get("/readyz")
 def readyz(runtime: Runtime = Depends(get_runtime)) -> JSONResponse:
-    """Readiness: at least one database backend is reachable."""
+    """Readiness: not draining, and at least one database backend is reachable."""
+    if runtime.draining:
+        return JSONResponse({"status": "draining"}, status_code=503)
     postgres = runtime.db_executor.health_check(DatabaseBackend.POSTGRES)
     if postgres["success"]:
         return JSONResponse({"status": "ready", "postgres": postgres})

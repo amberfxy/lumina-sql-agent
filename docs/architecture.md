@@ -79,7 +79,7 @@ One request ID follows the request through every layer:
   profiles for observability (Prometheus, Grafana), DynamoDB Local, and `loadtest`
   (mock LLM and a second API pinned to 1 CPU / 512 MB, the same limits as the k8s pod).
 - **Kubernetes** (`deploy/k8s`): 2+ API replicas, `maxUnavailable: 0` rolling updates,
-  `preStop` delay, `terminationGracePeriodSeconds` covering the agent deadline, a PDB,
+  `preStop` drain (`Connection: close`, readiness 503), `terminationGracePeriodSeconds` covering the agent deadline, a PDB,
   a CPU-based HPA, a PostgreSQL StatefulSet, Redis, and NetworkPolicies restricting the
   data stores to API pods. `deploy/k8s-testing` adds an in-cluster mock LLM for CI and
   disruption tests.

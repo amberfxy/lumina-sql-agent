@@ -96,10 +96,18 @@ Kubernetes disruptions (`scripts/k8s_disruption_test.sh`, kind, 2 replicas, 10 c
 
 | Disruption | Failed requests |
 | --- | --- |
-| `kubectl rollout restart` | 0 / 1500 |
+| `kubectl rollout restart` (3 runs) | 0 / 4500 |
 | Graceful pod delete | 0 / 1500 |
 | Force delete (`--grace-period=0 --force`; kubelet still sends SIGTERM) | 0 / 1500 |
-| SIGKILL of the API container (`crictl stop --timeout 0`) | 11 / 1500 (6 in-flight resets, 5 connects to the dead pod) |
+| SIGKILL of the API container (`crictl stop --timeout 0`) | 9 / 1500 (4 in-flight resets, 5 connects to the dead pod) |
+
+Graceful termination drains instead of sleeping: the `preStop` hook creates `DRAIN_FILE`,
+after which every response carries `Connection: close` and `/readyz` returns 503 for 10 s.
+Keep-alive clients therefore reconnect through the Service while the old pod still
+listens, rather than racing the connection close uvicorn performs on SIGTERM. This replaced
+a plain 5 s sleep after one CI rollout run on a GitHub runner dropped requests (the drop did
+not reproduce locally in 4 runs, 6,000 requests). The marker is removed at startup because a
+liveness-triggered restart runs `preStop` but keeps the pod's `/tmp` volume.
 
 Every query is read-only, so clients can safely retry transport errors; that is the
 mitigation for hard crashes.
