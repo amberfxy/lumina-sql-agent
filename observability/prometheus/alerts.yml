@@ -64,8 +64,82 @@ groups:
           summary: LLM provider calls are failing
           description: "{{ $value }} LLM errors per second over the last 5 minutes."
 
+  - name: lumina-safety
+    rules:
+      - alert: LuminaValidatorBypass
+        expr: sum(increase(lumina_unsafe_query_rejections_total{layer="database"}[10m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: The database refused a query that passed the SQL validator
+          description: >-
+            The read-only role or read-only transaction blocked a statement the AST guard
+            accepted. Defense in depth held, but the guard has a gap; find the query by request_id
+            in the logs and add it to eval/datasets/adversarial_sql.jsonl.
+
+      - alert: LuminaUnsafeQuerySpike
+        expr: sum(rate(lumina_unsafe_query_rejections_total[15m])) * 900 > 20
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: Unusually many unsafe queries rejected
+          description: More than 20 unsafe queries per 15 minutes; possible prompt-injection probing.
+
+  - name: lumina-capacity
+    rules:
+      - alert: LuminaLoadShedding
+        expr: |
+          sum(rate(lumina_admission_rejections_total{reason=~"queue_full|queue_timeout"}[5m]))
+            / clamp_min(sum(rate(lumina_http_requests_total{route=~"/api/v1/query.*"}[5m])), 1e-9) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Admission control is shedding more than 5% of query requests
+          description: Shed ratio {{ $value | humanizePercentage }}; scale out replicas (limits are per replica).
+
+      - alert: LuminaAdmissionQueueWaitHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(lumina_admission_wait_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Requests wait more than 2s (p95) for an execution slot
+          description: Replicas are at their concurrency limit; latency is dominated by queueing.
+
+  - name: lumina-llm
+    rules:
+      - alert: LuminaLlmRateLimited
+        expr: sum(rate(lumina_agent_run_failures_total{category="RATE_LIMIT"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Requests are failing because the LLM provider is rate limiting
+          description: Raise the provider quota or lower MAX_CONCURRENT_REQUESTS across replicas.
+
+      - alert: LuminaLlmSpendHigh
+        expr: sum(increase(lumina_llm_estimated_cost_usd_total[1h])) > 5
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: Estimated LLM spend above $5/hour
+          description: "Estimated spend {{ $value | printf \"%.2f\" }} USD over the last hour (adjust the threshold per deployment)."
+
   - name: lumina-dependencies
     rules:
+      - alert: LuminaSchemaUnavailable
+        expr: sum(rate(lumina_agent_run_failures_total{category=~"SCHEMA_UNAVAILABLE|CONNECTION_ERROR"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Requests are failing because the database is unreachable
+          description: Check PostgreSQL availability and the connection pool (POSTGRES_POOL_* settings).
+
       - alert: LuminaCacheUnavailable
         expr: sum(rate(lumina_cache_requests_total{result="error"}[5m])) > 0
         for: 5m
