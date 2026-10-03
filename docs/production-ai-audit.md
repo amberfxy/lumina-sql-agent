@@ -98,3 +98,28 @@ root cause of the critical finding.
 10. **Measurement**: categorized eval with negative cases, a deterministic scripted-LLM
     suite for CI, load test at 10/25/50/100 concurrency, cache hit/miss benchmark,
     failure-injection tests.
+
+## Status after remediation
+
+Re-rated after implementing the improvements above. Evidence lives in the referenced docs
+and in `eval/results/`.
+
+| Dimension | Before | After | Evidence |
+| --- | --- | --- | --- |
+| LLM reliability | PARTIAL | DONE | Provider errors classified (`RATE_LIMIT`/`TIMEOUT`/`MODEL_ERROR`), per-call timeout bounded by the run deadline, refusal channel; fault injection in `docs/failure-model.md` |
+| Schema grounding | PARTIAL | DONE | Guard checks tables against the exposed catalog before execution; `ALLOWED_TABLES` / `DENIED_COLUMNS` |
+| SQL correctness | PARTIAL | PARTIAL | Harness, 97-case categorized dataset and metrics are ready; real-model run pending an API key |
+| Query safety | MISSING | DONE | AST guard (68/68 adversarial, 0/61 false positives) plus read-only role (5/5 audit payloads blocked with the guard disabled) |
+| Prompt injection | MISSING | PARTIAL | Delimited untrusted input, refusal channel, guard on every output; model-level resistance unmeasured until the real-model eval runs |
+| Authorization boundaries | MISSING | DONE | `lumina_reader` role, server-side mutation gate (403), optional API keys, NetworkPolicy (verified on kind) |
+| Retry behavior | PARTIAL | DONE | Three-policy taxonomy (`src/failures.py`); 30/30 scripted scenarios |
+| Timeouts | PARTIAL | DONE | Agent deadline, deadline-aware LLM timeout, pool timeout 5 s, statement timeout 15 s (role and session) |
+| Concurrency | PARTIAL | DONE | Saturation measured: about 180-200 req/s per 1-vCPU replica (mock LLM), knee at 100-150 concurrent |
+| Backpressure | MISSING | DONE | Bounded slots and queue, early 429 + `Retry-After`; trade-offs measured (`docs/evaluation.md`) |
+| Caching | PARTIAL | DONE | Prompt version in key, re-validated hits; benchmark: hit 2.6 ms vs 408 ms, miss overhead within noise; kept |
+| Rate limiting | MISSING | PARTIAL | Per-client token bucket per replica; global limits need the ingress or Redis |
+| Observability | PARTIAL | DONE | Token/cost, failures by category, unsafe rejections by layer, in-flight/queue gauges, admission wait; 15 alert rules; request ID across HTTP, LLM, and SQL |
+| Evaluation quality | PARTIAL | DONE | Four suites, negative categories, JSON/CSV reports, deterministic suites in CI |
+| Cost measurement | MISSING | DONE | Provider-reported tokens, cost per request and per run, spend alert |
+| Deployment | PARTIAL | DONE | Reader role in k8s, superuser secret isolated, NetworkPolicy, grace period covers the deadline; 0/1500 failed requests during a rolling restart |
+| Testing | PARTIAL | DONE | 259 tests (86% coverage), security job, scripted eval, container e2e and kind jobs in CI |
