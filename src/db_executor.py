@@ -261,14 +261,30 @@ class DatabaseExecutor:
         parameters: dict[str, Any] | None,
     ) -> ExecutionResult:
         statement = self._normalize_partiql(query)
+        max_rows = self.settings.max_result_rows
         try:
-            request: dict[str, Any] = {"Statement": statement}
+            request: dict[str, Any] = {"Statement": statement, "ReturnConsumedCapacity": "TOTAL"}
             if parameters:
                 request["Parameters"] = [self._to_dynamodb_parameter(key, value) for key, value in parameters.items()]
 
-            response = self.dynamodb_client.execute_statement(**request)
-            items = response.get("Items", [])
-            rows = [self._deserialize_dynamodb_item(item) for item in items]
+            # A SELECT returns at most 1 MB per call; matching items can sit on later pages,
+            # so follow NextToken until the row cap or the page budget is reached.
+            items: list[dict[str, Any]] = []
+            pages = 0
+            capacity_units = 0.0
+            next_token: str | None = None
+            while True:
+                response = self.dynamodb_client.execute_statement(
+                    **request, **({"NextToken": next_token} if next_token else {})
+                )
+                pages += 1
+                items.extend(response.get("Items", []))
+                capacity_units += float((response.get("ConsumedCapacity") or {}).get("CapacityUnits") or 0)
+                next_token = response.get("NextToken")
+                if not next_token or len(items) > max_rows or pages >= self.settings.dynamodb_max_pages:
+                    break
+
+            rows = [self._deserialize_dynamodb_item(item) for item in items[:max_rows]]
             columns = sorted({column for row in rows for column in row}) if rows else []
 
             return ExecutionResult(
@@ -279,8 +295,10 @@ class DatabaseExecutor:
                 row_count=len(rows),
                 columns=columns,
                 metadata={
-                    "consumed_capacity": response.get("ConsumedCapacity"),
-                    "next_token_present": bool(response.get("NextToken")),
+                    "row_limit": max_rows,
+                    "truncated": len(items) > max_rows or bool(next_token),
+                    "pages": pages,
+                    "consumed_capacity_units": capacity_units,
                 },
             )
         except (BotoCoreError, ClientError) as exc:

@@ -106,3 +106,49 @@ def test_partiql_rules():
     with pytest.raises(QueryRejected) as excinfo:
         guard.validate("SELECT * FROM missing", DDB, known_tables={"orders"})
     assert excinfo.value.category == FailureCategory.UNKNOWN_TABLE
+
+
+def test_partiql_string_literals_do_not_trigger_structural_checks():
+    guard = SQLGuard()
+    guard.validate("SELECT pk FROM orders WHERE note = 'a; b'", DDB, known_tables={"orders"})
+    guard.validate("SELECT pk FROM orders WHERE note = 'FROM missing'", DDB, known_tables={"orders"})
+    guard.validate("SELECT pk FROM orders WHERE note = 'it''s; fine'", DDB, known_tables={"orders"})
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "SELECT pk FROM orders WHERE note = 'x'; DELETE FROM orders WHERE pk = 1",
+        "SELECT pk FROM orders WHERE note = 'unterminated; DELETE FROM orders",
+        "UPDATE orders SET status = 'x' WHERE pk = 1",
+        "INSERT INTO orders VALUE {'pk': 1}",
+        "EXISTS(SELECT * FROM orders)",
+        '{"statement": "DELETE FROM orders WHERE pk = 1"}',
+        "  delete from orders where pk = 1",
+    ],
+)
+def test_partiql_writes_and_stacked_statements_are_unsafe(statement):
+    assert rejection(statement, backend=DDB).category == FailureCategory.UNSAFE_QUERY
+
+
+def test_partiql_write_targets_must_be_known_when_mutations_are_enabled():
+    with pytest.raises(QueryRejected) as excinfo:
+        SQLGuard().validate("INSERT INTO audit_log VALUE {'pk': 1}", DDB, known_tables={"orders"}, allow_mutations=True)
+    assert excinfo.value.category == FailureCategory.UNKNOWN_TABLE
+
+
+def test_partiql_denied_attributes():
+    guard = SQLGuard(denied_columns=["customers.ssn"])
+    guard.validate("SELECT pk, name FROM customers", DDB, known_tables={"customers", "orders"})
+    guard.validate("SELECT * FROM orders", DDB, known_tables={"customers", "orders"})
+    guard.validate("SELECT pk FROM customers WHERE name = 'ssn'", DDB, known_tables={"customers"})
+    for statement in (
+        "SELECT * FROM customers",
+        "SELECT pk, ssn FROM customers",
+        'SELECT pk, "SSN" FROM "customers"',
+        "SELECT pk FROM customers WHERE ssn = '123'",
+        "SELECT pk, profile.ssn FROM customers",
+    ):
+        with pytest.raises(QueryRejected) as excinfo:
+            guard.validate(statement, DDB, known_tables={"customers"})
+        assert excinfo.value.category == FailureCategory.UNSAFE_QUERY, statement

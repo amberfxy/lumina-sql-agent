@@ -1,0 +1,37 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PartiQLReadOnly",
+      "Effect": "Allow",
+      "Action": ["dynamodb:PartiQLSelect", "dynamodb:DescribeTable"],
+      "Resource": [
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/TABLE_PREFIX*",
+        "arn:aws:dynamodb:REGION:ACCOUNT_ID:table/TABLE_PREFIX*/index/*"
+      ]
+    },
+    {
+      "Sid": "SchemaDiscovery",
+      "Effect": "Allow",
+      "Action": "dynamodb:ListTables",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyWritesEvenIfGrantedElsewhere",
+      "Effect": "Deny",
+      "Action": [
+        "dynamodb:PartiQLInsert",
+        "dynamodb:PartiQLUpdate",
+        "dynamodb:PartiQLDelete",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:UpdateTable"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

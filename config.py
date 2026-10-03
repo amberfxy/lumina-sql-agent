@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     aws_secret_access_key: SecretStr | None = None
     dynamodb_endpoint_url: str | None = None
     dynamodb_table_prefix: str = ""
+    # Each PartiQL page reads up to 1 MB, so this bounds the read capacity a single query can consume.
+    dynamodb_max_pages: int = Field(default=10, ge=1, le=100)
 
     # Redis cache (optional; caching is disabled when unset)
     redis_url: str | None = None

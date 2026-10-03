@@ -20,8 +20,8 @@ be perfect.
 | Abuse / cost | Request floods driving LLM spend | API keys, per-client token bucket, admission control | Alerting on spend (`LuminaLlmSpendHigh`) |
 
 Out of scope: multi-tenant row-level security (single-tenant analytical database assumed),
-DynamoDB IAM policy design (documented as a deployment responsibility), and model-provider
-data handling.
+attaching the DynamoDB IAM policy (a template is provided; binding it to a role is a
+deployment responsibility), and model-provider data handling.
 
 ## Layer 1: SQL guard (`src/sql_guard.py`)
 
@@ -42,7 +42,11 @@ An AST-based validator built on `sqlglot`, run **twice**: in the agent before ex
   LLM-correctable error, with the available tables listed).
 - Denied columns: rejected by name, through `*` / `t.*`, and through whole-row references
   such as `row_to_json(c)`.
-- PartiQL: single statement, `SELECT` only, `FROM` targets must be known tables.
+- PartiQL (no parser is available, so checks run on the statement with string-literal
+  contents blanked out, which keeps `'a; b'` from tripping them and lets an unterminated
+  literal still fail): single statement, `SELECT` only, target tables must be known, and
+  `DENIED_COLUMNS` apply (no `SELECT *` on restricted tables, restricted attribute names
+  rejected anywhere, including nested paths such as `profile.ssn`).
 
 Unsafe queries are **never** sent back to the model for "correction": `UNSAFE_QUERY` is a
 terminal failure, which keeps the agent from iterating towards a working exploit.
@@ -57,6 +61,13 @@ The API connects as `lumina_reader`, not the superuser:
   `idle_in_transaction_session_timeout = 30s`.
 - The executor additionally issues `SET TRANSACTION READ ONLY` on every read and caps rows
   with `fetchmany(max_rows + 1)` (the response reports `truncated`).
+
+DynamoDB has no transaction-level read-only mode, so the equivalent backstop is IAM:
+`deploy/iam/dynamodb-readonly-policy.json` allows only `PartiQLSelect`, `DescribeTable`,
+and `ListTables` on the prefixed tables and explicitly denies PartiQL and item writes. The
+executor follows `NextToken` until `MAX_RESULT_ROWS` or `DYNAMODB_MAX_PAGES` (default 10
+pages of at most 1 MB each), which bounds the read capacity a single generated query can
+consume, and reports `truncated` and consumed capacity units.
 
 ## Layer 3: prompt structure (`src/agent.py`)
 
@@ -92,6 +103,8 @@ Reproducible with `make eval-guard` and `LUMINA_INTEGRATION=1 pytest tests/test_
 | False positives on the gold queries | **0 / 61** |
 | Audit bypasses (writes via `SET TRANSACTION READ WRITE`, `COPY TO PROGRAM`, `pg_read_file`, `pg_authid`) blocked by the `lumina_reader` role **with the guard disabled** | **5 / 5** (integration test) |
 | Scripted agent scenarios where the "model" emits unsafe SQL (`s13`-`s24`) | All 12 terminate as `UNSAFE_QUERY` without executing the unsafe statement |
+| PartiQL writes and stacked statements against DynamoDB Local (`tests/test_integration_dynamodb.py`) | **4 / 4** rejected as `UNSAFE_QUERY`; item count and the targeted item verified unchanged |
+| PartiQL error mapping against DynamoDB Local | Missing table is `UNKNOWN_TABLE` (LLM-correctable), invalid statement is `SYNTAX_ERROR` |
 
 Before this work (revision `8961a64`, see `docs/production-ai-audit.md`), all four audit
 payloads executed against the database.
@@ -105,4 +118,8 @@ payloads executed against the database.
 - Prompt-injection resistance of the *model* is only measured by the real-model eval
   (`prompt_injection` category, `make eval`), which needs an API key and has not been run
   here.
-- DynamoDB relies on IAM for least privilege; the PartiQL guard is defense in depth only.
+- DynamoDB relies on IAM for least privilege; the PartiQL guard is lexical, not a parser,
+  and is defense in depth only. The IAM template has not been exercised against real AWS
+  here (DynamoDB Local does not enforce IAM).
+- DynamoDB is schemaless: a hallucinated attribute returns no value instead of an error, so
+  `UNKNOWN_COLUMN` cannot be detected on that backend.

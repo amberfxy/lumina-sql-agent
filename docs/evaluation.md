@@ -94,7 +94,7 @@ The self-correction ablation runs the same dataset twice: `make eval` (3 attempt
 | Guard: false positives on gold queries | **0 / 61** |
 | Gold validation | 61 / 61 gold queries execute and return rows |
 | Scripted scenarios | **30 / 30** pass |
-| Unit + integration tests | 259 passed, 86% line coverage (`LUMINA_INTEGRATION=1 pytest --cov`) |
+| Unit + integration tests | 287 passed, 90% line coverage (`LUMINA_INTEGRATION=1 pytest --cov`; 81% unit-only) |
 
 ### Model suite
 

@@ -75,8 +75,15 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 20
+      dynamodb-local:
+        image: amazon/dynamodb-local:2.5.3
+        ports: ["8000:8000"]
     env:
       LUMINA_INTEGRATION: "1"
+      DYNAMODB_ENDPOINT_URL: http://localhost:8000
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_REGION: us-east-1
       POSTGRES_HOST: localhost
       # The application connects as the least-privilege role, exactly as in Compose and k8s.
       POSTGRES_USER: lumina_reader

@@ -71,9 +71,12 @@ _ALWAYS_FORBIDDEN = tuple(
 )
 
 _IDENTIFIER = re.compile(r"[a-z_][a-z0-9_]*")
-_PARTIQL_TABLE = re.compile(r'\bFROM\s+"?([A-Za-z0-9_.\-]+)"?', re.IGNORECASE)
+_PARTIQL_TABLE = re.compile(r'\b(?:FROM|INTO|UPDATE)\s+"?([A-Za-z0-9_.\-]+)"?', re.IGNORECASE)
 _PARTIQL_READ = re.compile(r"^\s*SELECT\b", re.IGNORECASE)
 _PARTIQL_WRITE = re.compile(r"^\s*(INSERT|UPDATE|DELETE)\b", re.IGNORECASE)
+_PARTIQL_STRING = re.compile(r"'(?:[^']|'')*'")
+_PARTIQL_IDENTIFIER = re.compile(r'"([^"]+)"|\b([A-Za-z_][A-Za-z0-9_]*)\b')
+_PARTIQL_STAR = re.compile(r"^\s*SELECT\s+\*", re.IGNORECASE)
 
 
 class QueryRejected(Exception):
@@ -216,15 +219,31 @@ class SQLGuard:
         text = text.strip().rstrip(";").strip()
         if not text:
             raise QueryRejected(FailureCategory.MALFORMED_OUTPUT, "Empty statement.")
-        if ";" in text:
+        # String literals may legitimately contain ';' or keywords, so structural checks run on
+        # the statement with literal contents removed. An unterminated literal is left intact
+        # and therefore still trips the checks below.
+        structure = _PARTIQL_STRING.sub("''", text)
+        if ";" in structure:
             raise QueryRejected(FailureCategory.UNSAFE_QUERY, "Exactly one PartiQL statement is allowed.")
-        if not _PARTIQL_READ.match(text) and not (allow_mutations and _PARTIQL_WRITE.match(text)):
+        if not _PARTIQL_READ.match(structure) and not (allow_mutations and _PARTIQL_WRITE.match(structure)):
             raise QueryRejected(FailureCategory.UNSAFE_QUERY, "Only PartiQL SELECT statements are allowed.")
+
+        tables = [table.split(".")[0].lower() for table in _PARTIQL_TABLE.findall(structure)]
         if known is not None:
-            for table in _PARTIQL_TABLE.findall(text):
-                base = table.split(".")[0].lower()
-                if base not in known:
+            for table in tables:
+                if table not in known:
                     raise QueryRejected(
                         FailureCategory.UNKNOWN_TABLE,
                         f"Table {table!r} does not exist. Available tables: {', '.join(sorted(known))}.",
                     )
+
+        restricted = set().union(*(self.denied_columns.get(table, set()) for table in tables))
+        if restricted:
+            if _PARTIQL_STAR.match(structure):
+                raise QueryRejected(
+                    FailureCategory.UNSAFE_QUERY, "SELECT * is not allowed on tables with restricted columns."
+                )
+            for quoted, bare in _PARTIQL_IDENTIFIER.findall(structure):
+                name = (quoted or bare).lower()
+                if name in restricted:
+                    raise QueryRejected(FailureCategory.UNSAFE_QUERY, f"Attribute {name!r} is restricted.")

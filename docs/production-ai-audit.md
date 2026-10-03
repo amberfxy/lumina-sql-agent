@@ -109,7 +109,7 @@ and in `eval/results/`.
 | LLM reliability | PARTIAL | DONE | Provider errors classified (`RATE_LIMIT`/`TIMEOUT`/`MODEL_ERROR`), per-call timeout bounded by the run deadline, refusal channel; fault injection in `docs/failure-model.md` |
 | Schema grounding | PARTIAL | DONE | Guard checks tables against the exposed catalog before execution; `ALLOWED_TABLES` / `DENIED_COLUMNS` |
 | SQL correctness | PARTIAL | PARTIAL | Harness, 97-case categorized dataset and metrics are ready; real-model run pending an API key |
-| Query safety | MISSING | DONE | AST guard (68/68 adversarial, 0/61 false positives) plus read-only role (5/5 audit payloads blocked with the guard disabled) |
+| Query safety | MISSING | DONE | AST guard (68/68 adversarial, 0/61 false positives) plus read-only role (5/5 audit payloads blocked with the guard disabled); PartiQL guard with denied attributes, page-bounded reads, and an IAM read-only template, verified against DynamoDB Local |
 | Prompt injection | MISSING | PARTIAL | Delimited untrusted input, refusal channel, guard on every output; model-level resistance unmeasured until the real-model eval runs |
 | Authorization boundaries | MISSING | DONE | `lumina_reader` role, server-side mutation gate (403), optional API keys, NetworkPolicy (verified on kind) |
 | Retry behavior | PARTIAL | DONE | Three-policy taxonomy (`src/failures.py`); 30/30 scripted scenarios |
@@ -122,4 +122,4 @@ and in `eval/results/`.
 | Evaluation quality | PARTIAL | DONE | Four suites, negative categories, JSON/CSV reports, deterministic suites in CI |
 | Cost measurement | MISSING | DONE | Provider-reported tokens, cost per request and per run, spend alert |
 | Deployment | PARTIAL | DONE | Reader role in k8s, superuser secret isolated, NetworkPolicy, grace period covers the deadline; 0/1500 failed requests during a rolling restart |
-| Testing | PARTIAL | DONE | 259 tests (86% coverage), security job, scripted eval, container e2e and kind jobs in CI |
+| Testing | PARTIAL | DONE | 287 tests (90% coverage, including DynamoDB Local integration), security job, scripted eval, container e2e and kind jobs in CI |
