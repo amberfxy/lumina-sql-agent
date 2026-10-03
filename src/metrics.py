@@ -85,6 +85,16 @@ LLM_COST = Counter(
 
 IN_FLIGHT = Gauge("lumina_inflight_requests", "Agent requests currently executing.")
 QUEUED = Gauge("lumina_queued_requests", "Agent requests waiting for an execution slot.")
+ADMISSION_WAIT = Histogram(
+    "lumina_admission_wait_seconds",
+    "Time admitted requests spent queued before getting an execution slot.",
+    buckets=(0.001, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+)
+ADMISSION_HOLD = Histogram(
+    "lumina_admission_slot_hold_seconds",
+    "Time an execution slot was held (agent run plus thread hand-off).",
+    buckets=_LATENCY_BUCKETS,
+)
 ADMISSION_REJECTIONS = Counter(
     "lumina_admission_rejections_total",
     "Requests shed by admission control (queue_full, queue_timeout) or rate limiting (rate_limited).",

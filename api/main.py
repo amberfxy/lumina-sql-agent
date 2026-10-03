@@ -27,7 +27,7 @@ from src.cache import Cache, build_cache
 from src.context import configure_logging, new_request_id, reset_request_id, set_request_id
 from src.db_executor import DatabaseExecutor
 from src.failures import Failure, FailureCategory, FailureSource
-from src.metrics import HTTP_LATENCY, HTTP_REQUESTS
+from src.metrics import ADMISSION_REJECTIONS, HTTP_LATENCY, HTTP_REQUESTS
 from src.schema_manager import SchemaManager
 
 logger = logging.getLogger(__name__)
@@ -97,13 +97,33 @@ app.add_middleware(
 )
 
 
+_ADMISSION_ROUTES = {"/api/v1/query", "/api/v1/query/stream"}
+
+
 @app.middleware("http")
 async def request_context(request: Request, call_next: Any) -> Response:
     request_id = new_request_id(request.headers.get("x-request-id"))
     token = set_request_id(request_id)
     started = time.perf_counter()
     status = 500
+    route_label: str | None = None
     try:
+        runtime = getattr(request.app.state, "runtime", None)
+        if (
+            request.method == "POST"
+            and request.url.path in _ADMISSION_ROUTES
+            and runtime
+            and runtime.admission.saturated
+        ):
+            # Shed before routing, body parsing, and dependency resolution: under overload the
+            # rejection path must be nearly free or rejected traffic starves admitted requests.
+            ADMISSION_REJECTIONS.labels(reason="queue_full").inc()
+            route_label, status = request.url.path, 429
+            return JSONResponse(
+                {"detail": "Server busy; retry later."},
+                status_code=429,
+                headers={"Retry-After": "1", "X-Request-ID": request_id},
+            )
         response = await call_next(request)
         status = response.status_code
         response.headers["X-Request-ID"] = request_id
@@ -111,7 +131,7 @@ async def request_context(request: Request, call_next: Any) -> Response:
     finally:
         route = request.scope.get("route")
         # Use the route template (not the raw path) to keep label cardinality bounded.
-        route_label = getattr(route, "path", "unmatched")
+        route_label = route_label or getattr(route, "path", "unmatched")
         if route_label != "/metrics":
             HTTP_REQUESTS.labels(method=request.method, route=route_label, status=str(status)).inc()
             HTTP_LATENCY.labels(method=request.method, route=route_label).observe(time.perf_counter() - started)

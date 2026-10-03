@@ -11,7 +11,7 @@ import asyncio
 import threading
 import time
 
-from src.metrics import ADMISSION_REJECTIONS, IN_FLIGHT, QUEUED
+from src.metrics import ADMISSION_HOLD, ADMISSION_REJECTIONS, ADMISSION_WAIT, IN_FLIGHT, QUEUED
 
 
 class AdmissionRejected(Exception):
@@ -28,6 +28,7 @@ class AdmissionController:
         self.queue_timeout_seconds = queue_timeout_seconds
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._waiting = 0
+        self._acquired_at: dict[int, float] = {}
 
     @property
     def saturated(self) -> bool:
@@ -37,6 +38,7 @@ class AdmissionController:
         if self.saturated:
             ADMISSION_REJECTIONS.labels(reason="queue_full").inc()
             raise AdmissionRejected("queue_full", retry_after_seconds=1)
+        started = time.perf_counter()
         self._waiting += 1
         QUEUED.inc()
         try:
@@ -47,9 +49,18 @@ class AdmissionController:
         finally:
             self._waiting -= 1
             QUEUED.dec()
+        now = time.perf_counter()
+        ADMISSION_WAIT.observe(now - started)
+        task = asyncio.current_task()
+        if task is not None:
+            self._acquired_at[id(task)] = now
         IN_FLIGHT.inc()
 
     def release(self) -> None:
+        task = asyncio.current_task()
+        acquired = self._acquired_at.pop(id(task), None) if task is not None else None
+        if acquired is not None:
+            ADMISSION_HOLD.observe(time.perf_counter() - acquired)
         IN_FLIGHT.dec()
         self._semaphore.release()
 

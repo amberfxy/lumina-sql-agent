@@ -30,16 +30,20 @@ class FakeLLM:
     def __init__(self, responses: list[Any]) -> None:
         self.responses = list(responses)
         self.prompts: list[str] = []
+        self.timeouts: list[float | None] = []
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+    def complete(self, system_prompt: str, user_prompt: str, timeout: float | None = None) -> LLMResponse:
         self.prompts.append(user_prompt)
+        self.timeouts.append(timeout)
         response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
         return LLMResponse(response, prompt_tokens=100, completion_tokens=10)
 
-    def stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, LLMResponse]:
-        response = self.complete(system_prompt, user_prompt)
+    def stream(
+        self, system_prompt: str, user_prompt: str, timeout: float | None = None
+    ) -> Generator[str, None, LLMResponse]:
+        response = self.complete(system_prompt, user_prompt, timeout)
         midpoint = len(response.text) // 2
         yield response.text[:midpoint]
         yield response.text[midpoint:]

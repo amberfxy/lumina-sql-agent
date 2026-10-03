@@ -18,7 +18,7 @@ import openai
 from src.agent import LLMResponse
 
 _FAULTS = {"!RATE_LIMIT", "!TIMEOUT", "!SERVER_ERROR"}
-_USER_REQUEST = re.compile(r"<user_request>\s*([\s\S]*?)\s*</user_request>")
+_USER_REQUEST = re.compile(r"<user_request>\n([\s\S]*?)\n</user_request>")
 _REQUEST = httpx.Request("POST", "https://llm.invalid/v1/chat/completions")
 
 
@@ -45,7 +45,7 @@ class ScriptedLLM:
         self.prompts: list[str] = []
         self._lock = threading.Lock()
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
+    def complete(self, system_prompt: str, user_prompt: str, timeout: float | None = None) -> LLMResponse:
         with self._lock:
             self.prompts.append(user_prompt)
             if not self.responses:
@@ -57,12 +57,15 @@ class ScriptedLLM:
             raise_fault(text)
         return LLMResponse(text, approx_tokens(system_prompt + user_prompt), approx_tokens(text))
 
-    def stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, LLMResponse]:
-        response = self.complete(system_prompt, user_prompt)
+    def stream(
+        self, system_prompt: str, user_prompt: str, timeout: float | None = None
+    ) -> Generator[str, None, LLMResponse]:
+        response = self.complete(system_prompt, user_prompt, timeout)
         yield response.text
         return response
 
 
 def extract_user_request(prompt: str) -> str:
-    match = _USER_REQUEST.search(prompt)
-    return match.group(1).strip() if match else ""
+    # The rules also mention the tag names inline; only the data block puts a newline after the tag.
+    matches = _USER_REQUEST.findall(prompt)
+    return matches[-1].strip() if matches else ""

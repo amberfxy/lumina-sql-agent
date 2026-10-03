@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     max_result_rows: int = Field(default=500, ge=1, le=10000)
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    # Must exceed the idle timeout of the load balancer/ingress in front of the API, otherwise
+    # the server can close a connection the proxy is about to reuse (intermittent 502s).
+    api_keepalive_timeout_seconds: int = Field(default=75, ge=1)
     api_base_url: str = "http://localhost:8000"
     cors_allow_origins: list[str] = ["*"]
     log_format: Literal["text", "json"] = "text"

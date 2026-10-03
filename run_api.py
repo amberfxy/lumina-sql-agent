@@ -12,5 +12,6 @@ if __name__ == "__main__":
         host=settings.api_host,
         port=settings.api_port,
         reload=False,
+        timeout_keep_alive=settings.api_keepalive_timeout_seconds,
         log_level=settings.log_level.lower(),
     )

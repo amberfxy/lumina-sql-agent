@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 
 from config import DatabaseBackend
-from eval.scripted_llm import ScriptedLLM
-from src.agent import LuminaSQLAgent
+from eval.scripted_llm import ScriptedLLM, extract_user_request
+from src.agent import INITIAL_SQL_PROMPT, LuminaSQLAgent
 from src.context import reset_request_id, set_request_id
 from src.failures import FailureCategory
 from tests.conftest import FakeExecutor, FakeLLM, FakeSchemaManager, fenced
@@ -35,6 +35,21 @@ def test_first_attempt_success(settings):
     assert result.db_executions == 1
     assert result.execution.rows == ROWS
     assert result.failure is None
+
+
+def test_llm_timeout_is_bounded_by_the_remaining_deadline(settings):
+    # 30s budget across 1 + 2 SDK attempts: each try may take at most 10s, not the 60s default.
+    bounded = settings.model_copy(
+        update={"agent_deadline_seconds": 30, "llm_timeout_seconds": 60, "llm_max_retries": 2}
+    )
+    llm = FakeLLM([fenced(GOOD_SQL)])
+    make_agent(bounded, llm, FakeExecutor({GOOD_SQL: ROWS})).run("how many customers?")
+    assert 9.0 < llm.timeouts[0] <= 10.0
+
+    roomy = settings.model_copy(update={"agent_deadline_seconds": 300, "llm_timeout_seconds": 20, "llm_max_retries": 2})
+    llm = FakeLLM([fenced(GOOD_SQL)])
+    make_agent(roomy, llm, FakeExecutor({GOOD_SQL: ROWS})).run("how many customers?")
+    assert llm.timeouts[0] == 20
 
 
 def test_llm_correctable_error_is_sent_back_to_the_model(settings):
@@ -284,6 +299,11 @@ def test_concurrent_runs_are_independent(settings):
     results = asyncio.run(fan_out())
     assert all(result.success for result in results)
     assert len({result.user_query for result in results}) == 20
+
+
+def test_mock_llm_extracts_the_question_from_the_real_prompt():
+    prompt = INITIAL_SQL_PROMPT.format(query_language="SQL", pruned_schema="(schema)", user_query="How many?")
+    assert extract_user_request(prompt) == "How many?"
 
 
 def test_extract_query_variants():

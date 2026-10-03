@@ -180,9 +180,11 @@ class AgentResult:
 
 
 class LLMClient(Protocol):
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse: ...
+    def complete(self, system_prompt: str, user_prompt: str, timeout: float | None = None) -> LLMResponse: ...
 
-    def stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, LLMResponse]: ...
+    def stream(
+        self, system_prompt: str, user_prompt: str, timeout: float | None = None
+    ) -> Generator[str, None, LLMResponse]: ...
 
 
 class OpenAILLMClient:
@@ -209,8 +211,9 @@ class OpenAILLMClient:
             "extra_headers": {"X-Request-ID": get_request_id()},
         }
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        response = self.client.chat.completions.create(**self._request(system_prompt, user_prompt))
+    def complete(self, system_prompt: str, user_prompt: str, timeout: float | None = None) -> LLMResponse:
+        client = self.client.with_options(timeout=timeout) if timeout else self.client
+        response = client.chat.completions.create(**self._request(system_prompt, user_prompt))
         usage = response.usage
         return LLMResponse(
             text=response.choices[0].message.content or "",
@@ -218,8 +221,11 @@ class OpenAILLMClient:
             completion_tokens=usage.completion_tokens if usage else 0,
         )
 
-    def stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, LLMResponse]:
-        stream = self.client.chat.completions.create(
+    def stream(
+        self, system_prompt: str, user_prompt: str, timeout: float | None = None
+    ) -> Generator[str, None, LLMResponse]:
+        client = self.client.with_options(timeout=timeout) if timeout else self.client
+        stream = client.chat.completions.create(
             **self._request(system_prompt, user_prompt),
             stream=True,
             stream_options={"include_usage": True},
@@ -258,14 +264,18 @@ class AnthropicLLMClient:
             "messages": [{"role": "user", "content": user_prompt}],
         }
 
-    def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        response = self.client.messages.create(**self._request(system_prompt, user_prompt))
+    def complete(self, system_prompt: str, user_prompt: str, timeout: float | None = None) -> LLMResponse:
+        client = self.client.with_options(timeout=timeout) if timeout else self.client
+        response = client.messages.create(**self._request(system_prompt, user_prompt))
         text_blocks = [block.text for block in response.content if block.type == "text"]
         return LLMResponse("".join(text_blocks), response.usage.input_tokens, response.usage.output_tokens)
 
-    def stream(self, system_prompt: str, user_prompt: str) -> Generator[str, None, LLMResponse]:
+    def stream(
+        self, system_prompt: str, user_prompt: str, timeout: float | None = None
+    ) -> Generator[str, None, LLMResponse]:
+        client = self.client.with_options(timeout=timeout) if timeout else self.client
         chunks: list[str] = []
-        with self.client.messages.stream(**self._request(system_prompt, user_prompt)) as stream:
+        with client.messages.stream(**self._request(system_prompt, user_prompt)) as stream:
             for text in stream.text_stream:
                 chunks.append(text)
                 yield text
@@ -456,7 +466,7 @@ class LuminaSQLAgent:
 
             yield {"type": "status", "message": f"Generating query (attempt {attempt_number}/{max_attempts})..."}
             try:
-                response = yield from self._call_llm(system_prompt, prompt, phase, stream_tokens, state)
+                response = yield from self._call_llm(system_prompt, prompt, phase, stream_tokens, state, deadline)
             except Exception as exc:  # noqa: BLE001 - provider SDK errors are classified, not propagated
                 logger.warning("LLM call failed: %s: %s", exc.__class__.__name__, exc)
                 failure = Failure(classify_llm_error(exc), FailureSource.LLM, f"{exc.__class__.__name__}: {exc}"[:500])
@@ -618,19 +628,24 @@ class LuminaSQLAgent:
         phase: str,
         stream_tokens: bool,
         state: _RunState,
+        deadline: float,
     ) -> Generator[dict[str, Any], None, LLMResponse]:
         """Call the LLM, optionally yielding token events; returns the full response with usage."""
         provider = self.settings.llm_provider.value
         model = self.settings.active_llm_model
         started = time.perf_counter()
+        # The SDK retries timeouts internally, so split the remaining run budget across its
+        # attempts; otherwise one call can outlive the agent deadline by several multiples.
+        per_try = (deadline - started) / (self.settings.llm_max_retries + 1)
+        timeout = max(1.0, min(self.settings.llm_timeout_seconds, per_try))
         status = "ok"
         state.llm_calls += 1
         try:
             if not stream_tokens:
-                response = self.llm_client.complete(system_prompt, user_prompt)
+                response = self.llm_client.complete(system_prompt, user_prompt, timeout=timeout)
             else:
                 chunks: list[str] = []
-                stream = self.llm_client.stream(system_prompt, user_prompt)
+                stream = self.llm_client.stream(system_prompt, user_prompt, timeout=timeout)
                 while True:
                     try:
                         chunk = next(stream)
