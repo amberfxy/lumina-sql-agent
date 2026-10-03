@@ -122,4 +122,4 @@ and in `eval/results/`.
 | Evaluation quality | PARTIAL | DONE | Four suites, negative categories, JSON/CSV reports, deterministic suites in CI |
 | Cost measurement | MISSING | DONE | Provider-reported tokens, cost per request and per run, spend alert |
 | Deployment | PARTIAL | DONE | Reader role in k8s, superuser secret isolated, NetworkPolicy, grace period covers the deadline, preStop drain; 0/4500 failed requests across 3 rolling restarts |
-| Testing | PARTIAL | DONE | 287 tests (90% coverage, including DynamoDB Local integration), security job, scripted eval, container e2e and kind jobs in CI |
+| Testing | PARTIAL | DONE | 289 tests (90% coverage, including DynamoDB Local integration), security job, scripted eval, container e2e and kind jobs in CI |
