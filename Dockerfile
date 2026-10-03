@@ -17,7 +17,8 @@ RUN useradd --create-home --uid 10001 lumina
 COPY config.py run_api.py app.py ./
 COPY api ./api
 COPY src ./src
-COPY evaluation ./evaluation
+COPY eval ./eval
+COPY scripts ./scripts
 
 USER 10001
 EXPOSE 8000 8501

@@ -3,8 +3,9 @@ name: lumina
 x-app-env: &app-env
   POSTGRES_HOST: postgres
   POSTGRES_PORT: "5432"
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
+  # Least-privilege role from db/init/00_roles.sql; the superuser is only used by the postgres container.
+  POSTGRES_USER: lumina_reader
+  POSTGRES_PASSWORD: lumina_reader
   POSTGRES_DB: lumina
   REDIS_URL: redis://redis:6379/0
   DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
@@ -107,6 +108,41 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+
+  # Load/resilience testing: an OpenAI-compatible mock LLM and a second API instance wired to it.
+  mock-llm:
+    image: lumina-sql-agent:local
+    profiles: ["loadtest"]
+    command: ["python", "scripts/mock_llm.py"]
+    environment:
+      MOCK_LLM_LATENCY_MS: ${MOCK_LLM_LATENCY_MS:-400}
+    ports:
+      - "9000:9000"
+    healthcheck:
+      disable: true
+
+  api-loadtest:
+    image: lumina-sql-agent:local
+    profiles: ["loadtest"]
+    environment:
+      <<: *app-env
+      OPENAI_API_KEY: mock-key
+      OPENAI_BASE_URL: http://mock-llm:9000/v1
+      OPENAI_MODEL: mock-gpt
+      LOG_LEVEL: WARNING
+      MAX_CONCURRENT_REQUESTS: ${MAX_CONCURRENT_REQUESTS:-16}
+      MAX_QUEUED_REQUESTS: ${MAX_QUEUED_REQUESTS:-32}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-10}
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-llm:
+        condition: service_started
 
   tests:
     build:

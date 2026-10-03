@@ -13,3 +13,4 @@ pandas>=2.2.0
 python-dotenv>=1.0.1
 redis>=5.2.0
 prometheus-client>=0.21.0
+sqlglot>=26.0.0

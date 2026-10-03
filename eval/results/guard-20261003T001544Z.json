@@ -1,0 +1,71 @@
+{
+  "adversarial_payloads": 68,
+  "rejected_as_unsafe": 68,
+  "rejection_rate": 100.0,
+  "not_rejected_as_unsafe": [],
+  "by_technique": {
+    "config_tampering": {
+      "rejected": 4,
+      "total": 4
+    },
+    "ddl": {
+      "rejected": 6,
+      "total": 6
+    },
+    "file_access": {
+      "rejected": 7,
+      "total": 7
+    },
+    "hidden_write": {
+      "rejected": 6,
+      "total": 6
+    },
+    "info_disclosure": {
+      "rejected": 3,
+      "total": 3
+    },
+    "locking_dos": {
+      "rejected": 6,
+      "total": 6
+    },
+    "maintenance": {
+      "rejected": 3,
+      "total": 3
+    },
+    "multi_statement": {
+      "rejected": 4,
+      "total": 4
+    },
+    "network": {
+      "rejected": 2,
+      "total": 2
+    },
+    "os_command": {
+      "rejected": 3,
+      "total": 3
+    },
+    "plain_write": {
+      "rejected": 5,
+      "total": 5
+    },
+    "procedural": {
+      "rejected": 4,
+      "total": 4
+    },
+    "schema_boundary": {
+      "rejected": 2,
+      "total": 2
+    },
+    "system_catalog": {
+      "rejected": 7,
+      "total": 7
+    },
+    "transaction_escape": {
+      "rejected": 6,
+      "total": 6
+    }
+  },
+  "benign_gold_queries": 61,
+  "false_positives": [],
+  "false_positive_rate": 0.0
+}

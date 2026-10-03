@@ -94,6 +94,10 @@ class SchemaManager:
         self._catalog_cache: dict[DatabaseBackend, tuple[float, SchemaCatalog]] = {}
         self._lock = threading.Lock()
 
+    def get_table_names(self, backend: DatabaseBackend | None = None) -> set[str]:
+        """Tables the model may query (after the allowlist); empty if the catalog is unavailable."""
+        return {table.name for table in self._get_catalog(backend or DatabaseBackend.POSTGRES).tables}
+
     def get_pruned_schema(self, user_query: str, backend: DatabaseBackend | None = None) -> str:
         """Return a markdown schema snippet relevant to the user query."""
         backend = backend or DatabaseBackend.POSTGRES
@@ -136,10 +140,29 @@ class SchemaManager:
                 if catalog.tables:
                     self.cache.set(self._cache_key(backend), catalog.to_json(), ttl_seconds=ttl)
 
+            catalog = self._apply_access_boundary(catalog)
             # Empty catalogs (e.g. database unreachable) are not cached so the next request retries.
             if catalog.tables:
                 self._catalog_cache[backend] = (time.monotonic(), catalog)
             return catalog
+
+    def _apply_access_boundary(self, catalog: SchemaCatalog) -> SchemaCatalog:
+        """Drop tables outside ALLOWED_TABLES and columns in DENIED_COLUMNS so the model never sees them."""
+        allowed = {name.lower() for name in self.settings.allowed_tables}
+        denied: dict[str, set[str]] = {}
+        for entry in self.settings.denied_columns:
+            table, _, column = entry.lower().partition(".")
+            denied.setdefault(table, set()).add(column)
+        if not allowed and not denied:
+            return catalog
+        tables = []
+        for table in catalog.tables:
+            if allowed and table.name.lower() not in allowed:
+                continue
+            hidden = denied.get(table.name.lower(), set())
+            columns = tuple(column for column in table.columns if column.name.lower() not in hidden)
+            tables.append(replace(table, columns=columns))
+        return SchemaCatalog(backend=catalog.backend, tables=tables)
 
     def _load_shared_catalog(self, backend: DatabaseBackend) -> SchemaCatalog | None:
         payload = self.cache.get(self._cache_key(backend), kind="schema")

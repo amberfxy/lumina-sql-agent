@@ -14,7 +14,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["B008"]  # FastAPI's Depends() in argument defaults is idiomatic
 
 [tool.ruff.lint.isort]
-known-first-party = ["api", "src", "evaluation", "config"]
+known-first-party = ["api", "src", "eval", "config"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

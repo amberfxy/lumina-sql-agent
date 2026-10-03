@@ -39,6 +39,24 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_base_url: str = "http://localhost:8000"
     cors_allow_origins: list[str] = ["*"]
+    log_format: Literal["text", "json"] = "text"
+    agent_deadline_seconds: float = Field(default=90.0, gt=0)
+
+    # Authorization and safety
+    api_keys: SecretStr | None = None  # comma-separated; unset disables API authentication
+    mutations_enabled: bool = False  # server-side gate for the per-request allow_mutations flag
+    allowed_tables: list[str] = []  # empty = every table in the configured schema
+    denied_columns: list[str] = []  # "table.column" entries hidden from the model and rejected by the guard
+
+    # Admission control and rate limiting
+    max_concurrent_requests: int = Field(default=16, ge=1, le=1000)
+    max_queued_requests: int = Field(default=32, ge=0, le=10000)
+    queue_timeout_seconds: float = Field(default=10.0, gt=0)
+    rate_limit_per_minute: int = Field(default=0, ge=0)  # per client; 0 disables
+
+    # Transient database retries (same query, no LLM)
+    db_transient_retries: int = Field(default=2, ge=0, le=5)
+    db_retry_backoff_seconds: float = Field(default=0.2, ge=0)
 
     # LLM
     llm_provider: LLMProvider = LLMProvider.OPENAI
@@ -51,6 +69,9 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=4096, ge=256, le=16384)
     llm_timeout_seconds: float = Field(default=60.0, gt=0)
     llm_max_retries: int = Field(default=3, ge=0, le=10)
+    # USD per 1M tokens, used only for cost estimates (defaults: gpt-4o list price).
+    llm_input_cost_per_1m_tokens: float = Field(default=2.50, ge=0)
+    llm_output_cost_per_1m_tokens: float = Field(default=10.00, ge=0)
 
     # PostgreSQL
     postgres_host: str = "localhost"
@@ -60,8 +81,9 @@ class Settings(BaseSettings):
     postgres_db: str = "lumina"
     postgres_schema: str = "public"
     postgres_sslmode: str = "prefer"
-    postgres_pool_size: int = Field(default=5, ge=1, le=100)
+    postgres_pool_size: int = Field(default=10, ge=1, le=100)
     postgres_max_overflow: int = Field(default=10, ge=0, le=100)
+    postgres_pool_timeout_seconds: float = Field(default=5.0, gt=0)
     postgres_connect_timeout_seconds: int = Field(default=5, ge=1, le=60)
     postgres_statement_timeout_ms: int = Field(default=15000, ge=100)
 
@@ -87,6 +109,12 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
             f"?sslmode={self.postgres_sslmode}"
         )
+
+    @property
+    def api_key_set(self) -> set[str]:
+        if not self.api_keys:
+            return set()
+        return {key.strip() for key in self.api_keys.get_secret_value().split(",") if key.strip()}
 
     @property
     def active_llm_model(self) -> str:

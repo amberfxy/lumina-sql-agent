@@ -4,6 +4,7 @@ import pytest
 
 from config import DatabaseBackend
 from src.db_executor import DatabaseExecutionError, DatabaseExecutor
+from src.failures import FailureCategory
 
 
 @pytest.mark.parametrize(
@@ -13,23 +14,34 @@ from src.db_executor import DatabaseExecutionError, DatabaseExecutor
         "update orders set status = 'x'",
         "DROP TABLE customers",
         "WITH x AS (DELETE FROM orders RETURNING *) SELECT * FROM x",
+        "SET TRANSACTION READ WRITE; SELECT nextval('orders_order_id_seq')",
+        "COPY (SELECT 1) TO PROGRAM 'id'",
     ],
 )
-def test_mutations_blocked_before_touching_database(settings, query):
+def test_unsafe_queries_blocked_before_touching_database(settings, query):
     executor = DatabaseExecutor(settings)
     with pytest.raises(DatabaseExecutionError) as excinfo:
         executor.execute(query, backend=DatabaseBackend.POSTGRES)
-    assert excinfo.value.raw_error == DatabaseExecutor._BLOCKED_ERROR
+    assert excinfo.value.category == FailureCategory.UNSAFE_QUERY
     assert executor._postgres_engine is None
 
 
-def test_column_names_containing_keywords_are_not_blocked():
-    assert not DatabaseExecutor._MUTATING_PATTERN.search("SELECT created_at, last_update FROM t")
-
-
 def test_empty_query_rejected(settings):
-    with pytest.raises(DatabaseExecutionError):
+    with pytest.raises(DatabaseExecutionError) as excinfo:
         DatabaseExecutor(settings).execute("   ", backend=DatabaseBackend.POSTGRES)
+    assert excinfo.value.category == FailureCategory.MALFORMED_OUTPUT
+
+
+def test_unreachable_database_is_a_connection_error(settings):
+    executor = DatabaseExecutor(
+        settings.model_copy(
+            update={"postgres_host": "127.0.0.1", "postgres_port": 1, "postgres_connect_timeout_seconds": 1}
+        )
+    )
+    with pytest.raises(DatabaseExecutionError) as excinfo:
+        executor.execute("SELECT 1", backend=DatabaseBackend.POSTGRES)
+    assert excinfo.value.category == FailureCategory.CONNECTION_ERROR
+    executor.close()
 
 
 def test_dedupe_columns():

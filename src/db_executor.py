@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import threading
 import time
 from dataclasses import dataclass, field
@@ -18,7 +17,10 @@ from sqlalchemy.engine import Engine, Result
 from sqlalchemy.exc import SQLAlchemyError
 
 from config import DatabaseBackend, Settings, get_settings
+from src.context import get_request_id
+from src.failures import FailureCategory, classify_dynamodb_error, classify_postgres_error
 from src.metrics import DB_LATENCY, DB_QUERIES
+from src.sql_guard import QueryRejected, SQLGuard
 
 logger = logging.getLogger(__name__)
 
@@ -54,30 +56,33 @@ class ExecutionResult:
 
 
 class DatabaseExecutionError(Exception):
-    """Raised when a query fails; carries the raw database error for the LLM loop."""
+    """Raised when a query fails; carries the raw database error and its failure category."""
 
-    def __init__(self, message: str, raw_error: str, backend: DatabaseBackend, query: str) -> None:
+    def __init__(
+        self,
+        message: str,
+        raw_error: str,
+        backend: DatabaseBackend,
+        query: str,
+        category: FailureCategory = FailureCategory.INTERNAL_ERROR,
+    ) -> None:
         super().__init__(message)
         self.raw_error = raw_error
         self.backend = backend
         self.query = query
+        self.category = category
 
 
 class DatabaseExecutor:
-    """Executes generated SQL/PartiQL against PostgreSQL or DynamoDB."""
+    """Executes generated SQL/PartiQL against PostgreSQL or DynamoDB.
 
-    _READ_ONLY_PATTERN = re.compile(
-        r"^\s*(with\b.*?select\b|select\b|explain\b|show\b|describe\b)",
-        re.IGNORECASE | re.DOTALL,
-    )
-    _MUTATING_PATTERN = re.compile(
-        r"\b(insert|update|delete|drop|alter|truncate|create|grant|revoke)\b",
-        re.IGNORECASE,
-    )
-    _BLOCKED_ERROR = "Mutation blocked by safety policy"
+    The structural SQL guard runs here as well as in the agent so that no caller
+    (cache replays, evaluation, future endpoints) can execute an unvalidated statement.
+    """
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
+        self.guard = SQLGuard(schema=self.settings.postgres_schema, denied_columns=self.settings.denied_columns)
         self._postgres_engine: Engine | None = None
         self._dynamodb_client: Any | None = None
         self._init_lock = threading.Lock()
@@ -92,6 +97,7 @@ class DatabaseExecutor:
                         pool_pre_ping=True,
                         pool_size=self.settings.postgres_pool_size,
                         max_overflow=self.settings.postgres_max_overflow,
+                        pool_timeout=self.settings.postgres_pool_timeout_seconds,
                         connect_args={
                             "connect_timeout": self.settings.postgres_connect_timeout_seconds,
                             "options": f"-c statement_timeout={self.settings.postgres_statement_timeout_ms}",
@@ -147,24 +153,26 @@ class DatabaseExecutor:
     ) -> ExecutionResult:
         """Execute a query and return a normalized result or raise DatabaseExecutionError."""
         normalized_query = query.strip()
-        if not normalized_query:
-            raise DatabaseExecutionError(
-                message="Query is empty.",
-                raw_error="Empty query string",
-                backend=backend,
-                query=query,
-            )
-
         logger.info("Executing query backend=%s query=%r", backend.value, normalized_query[:500])
 
         started = time.perf_counter()
         status = "ok"
         try:
+            try:
+                self.guard.validate(normalized_query, backend, allow_mutations=allow_mutations)
+            except QueryRejected as exc:
+                raise DatabaseExecutionError(
+                    message="Query rejected by safety policy.",
+                    raw_error=exc.reason,
+                    backend=backend,
+                    query=normalized_query,
+                    category=exc.category,
+                ) from exc
             if backend == DatabaseBackend.POSTGRES:
                 return self._execute_postgres(normalized_query, allow_mutations=allow_mutations, parameters=parameters)
             return self._execute_dynamodb(normalized_query, allow_mutations=allow_mutations, parameters=parameters)
         except DatabaseExecutionError as exc:
-            status = "blocked" if exc.raw_error == self._BLOCKED_ERROR else "error"
+            status = "blocked" if exc.category == FailureCategory.UNSAFE_QUERY else "error"
             raise
         except Exception as exc:  # noqa: BLE001 - surface unknown failures uniformly
             status = "error"
@@ -200,25 +208,19 @@ class DatabaseExecutor:
         allow_mutations: bool,
         parameters: dict[str, Any] | None,
     ) -> ExecutionResult:
-        if not allow_mutations and self._MUTATING_PATTERN.search(query):
-            raise DatabaseExecutionError(
-                message="Mutating SQL statements are disabled by default.",
-                raw_error=self._BLOCKED_ERROR,
-                backend=DatabaseBackend.POSTGRES,
-                query=query,
-            )
-
         max_rows = self.settings.max_result_rows
+        # The request ID is validated to [A-Za-z0-9._-], so it cannot close the comment.
+        tagged_query = f"/* request_id={get_request_id()} */ {query}"
         try:
             with self.postgres_engine.connect() as connection:
                 if not allow_mutations:
-                    # Database-enforced guard: catches writes the keyword filter misses
-                    # (e.g. nextval(), side-effecting functions).
+                    # Second layer behind the guard; the least-privilege role is the third.
                     connection.execute(text("SET TRANSACTION READ ONLY"))
-                result: Result[Any] = connection.execute(text(query), parameters or {})
+                result: Result[Any] = connection.execute(text(tagged_query), parameters or {})
                 if result.returns_rows:
                     columns = self._dedupe_columns(list(result.keys()))
-                    rows = [dict(zip(columns, tuple(row), strict=True)) for row in result.fetchmany(max_rows)]
+                    fetched = result.fetchmany(max_rows + 1)
+                    rows = [dict(zip(columns, tuple(row), strict=True)) for row in fetched[:max_rows]]
                     connection.commit()
                     return ExecutionResult(
                         success=True,
@@ -227,7 +229,7 @@ class DatabaseExecutor:
                         rows=rows,
                         row_count=len(rows),
                         columns=columns,
-                        metadata={"truncated_to": max_rows},
+                        metadata={"row_limit": max_rows, "truncated": len(fetched) > max_rows},
                     )
 
                 connection.commit()
@@ -248,6 +250,7 @@ class DatabaseExecutor:
                 raw_error=raw_error,
                 backend=DatabaseBackend.POSTGRES,
                 query=query,
+                category=classify_postgres_error(exc),
             ) from exc
 
     def _execute_dynamodb(
@@ -258,14 +261,6 @@ class DatabaseExecutor:
         parameters: dict[str, Any] | None,
     ) -> ExecutionResult:
         statement = self._normalize_partiql(query)
-        if not allow_mutations and self._MUTATING_PATTERN.search(statement):
-            raise DatabaseExecutionError(
-                message="Mutating PartiQL statements are disabled by default.",
-                raw_error=self._BLOCKED_ERROR,
-                backend=DatabaseBackend.DYNAMODB,
-                query=query,
-            )
-
         try:
             request: dict[str, Any] = {"Statement": statement}
             if parameters:
@@ -296,6 +291,7 @@ class DatabaseExecutor:
                 raw_error=raw_error,
                 backend=DatabaseBackend.DYNAMODB,
                 query=statement,
+                category=classify_dynamodb_error(exc),
             ) from exc
 
     @staticmethod

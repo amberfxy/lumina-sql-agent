@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from decimal import Decimal
 
-from evaluation.compare import normalize_value, results_match, to_matrix
+from eval.compare import normalize_value, results_match, to_matrix
 
 
 def m(rows):
