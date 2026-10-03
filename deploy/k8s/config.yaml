@@ -4,24 +4,44 @@ metadata:
   name: lumina-config
 data:
   LOG_LEVEL: INFO
+  LOG_FORMAT: json
   LLM_PROVIDER: openai
   OPENAI_MODEL: gpt-4o
   MAX_RETRY_ITERATIONS: "3"
+  AGENT_DEADLINE_SECONDS: "90"
+  LLM_TIMEOUT_SECONDS: "30"
+  LLM_MAX_RETRIES: "2"
+  # Per replica. Each slot is one in-flight agent run (one LLM call at a time); size it
+  # against the provider's concurrency/TPM quota divided by the replica count.
+  MAX_CONCURRENT_REQUESTS: "16"
+  MAX_QUEUED_REQUESTS: "32"
   POSTGRES_HOST: postgres
   POSTGRES_PORT: "5432"
-  POSTGRES_USER: postgres
+  # The API connects as the least-privilege role created by db/init/00_roles.sql.
+  POSTGRES_USER: lumina_reader
   POSTGRES_DB: lumina
-  POSTGRES_POOL_SIZE: "5"
+  POSTGRES_POOL_SIZE: "10"
   POSTGRES_STATEMENT_TIMEOUT_MS: "15000"
   REDIS_URL: redis://redis:6379/0
 ---
 # Placeholder values for local clusters only. In a real environment, source these
-# from a secrets manager (e.g. External Secrets Operator or Sealed Secrets).
+# from a secrets manager (e.g. External Secrets Operator or Sealed Secrets) and rotate
+# the lumina_reader password with ALTER ROLE after the init scripts run.
 apiVersion: v1
 kind: Secret
 metadata:
   name: lumina-secrets
 type: Opaque
 stringData:
-  POSTGRES_PASSWORD: postgres
+  POSTGRES_PASSWORD: lumina_reader
   OPENAI_API_KEY: ""
+---
+# Superuser credentials, mounted only into the postgres StatefulSet, never the API.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-superuser
+type: Opaque
+stringData:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres

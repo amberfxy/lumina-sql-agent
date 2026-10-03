@@ -13,6 +13,7 @@ resources:
   - postgres.yaml
   - redis.yaml
   - api.yaml
+  - networkpolicy.yaml
 
 images:
   - name: lumina-sql-agent

@@ -1,0 +1,29 @@
+# Test overlay: the base deployment wired to an in-cluster mock LLM, used by CI and the
+# rollout-under-traffic test (docs/runbook.md). Never deploy this to a real environment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lumina
+
+resources:
+  - ../k8s
+  - mock-llm.yaml
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: lumina-config
+    patch: |-
+      - op: add
+        path: /data/OPENAI_BASE_URL
+        value: http://mock-llm:9000/v1
+      - op: replace
+        path: /data/OPENAI_MODEL
+        value: mock-gpt
+  - target:
+      kind: Secret
+      name: lumina-secrets
+    patch: |-
+      - op: replace
+        path: /stringData/OPENAI_API_KEY
+        value: mock-key

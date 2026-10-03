@@ -38,7 +38,8 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: /metrics
     spec:
-      terminationGracePeriodSeconds: 30
+      # preStop (5s) + AGENT_DEADLINE_SECONDS (90s) + margin, so a rollout lets in-flight runs finish.
+      terminationGracePeriodSeconds: 100
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
