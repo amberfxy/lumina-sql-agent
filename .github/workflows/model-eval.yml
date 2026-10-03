@@ -1,0 +1,60 @@
+name: Model evaluation
+
+# Real-model evaluation costs money and is non-deterministic, so it never runs on push.
+# Requires the OPENAI_API_KEY repository secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_attempts:
+        description: "Self-correction attempts (1 = single-shot ablation)"
+        default: "3"
+      category:
+        description: "Optional single category (e.g. joins, prompt_injection)"
+        default: ""
+
+jobs:
+  model-eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lumina
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lumina"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_USER: lumina_reader
+      POSTGRES_PASSWORD: lumina_reader
+      PGPASSWORD: postgres
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Seed database and roles
+        run: |
+          for f in db/init/*.sql; do
+            psql -h localhost -U postgres -d lumina -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: Run evaluation
+        env:
+          MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+          CATEGORY: ${{ inputs.category }}
+        run: |
+          set -- --max-attempts "$MAX_ATTEMPTS"
+          if [ -n "$CATEGORY" ]; then set -- "$@" --category "$CATEGORY"; fi
+          python scripts/run_eval.py model "$@"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model-eval-report
+          path: eval/results/model-*
