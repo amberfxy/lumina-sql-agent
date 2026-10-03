@@ -1,0 +1,355 @@
+{
+  "timestamp": "2026-10-03T03:09:19+00:00",
+  "target": "http://localhost:8002",
+  "workers": 8,
+  "phase_seconds": {
+    "baseline": 10,
+    "fault": 20,
+    "recovery": 30
+  },
+  "scenarios": [
+    {
+      "scenario": "llm_rate_limit",
+      "description": "Provider returns 429 on every call",
+      "phases": {
+        "baseline": {
+          "responses": 185,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 185
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 419,
+            "p95": 493
+          },
+          "max_latency_ms": 501
+        },
+        "fault": {
+          "responses": 65,
+          "success_rate": 12.3,
+          "status_counts": {
+            "200": 8,
+            "503": 57
+          },
+          "failure_categories": {
+            "RATE_LIMIT": 57
+          },
+          "latency_ms": {
+            "p50": 2482,
+            "p95": 2758
+          },
+          "max_latency_ms": 2805
+        },
+        "recovery": {
+          "responses": 569,
+          "success_rate": 99.3,
+          "status_counts": {
+            "503": 4,
+            "200": 565
+          },
+          "failure_categories": {
+            "RATE_LIMIT": 4
+          },
+          "latency_ms": {
+            "p50": 416,
+            "p95": 493
+          },
+          "max_latency_ms": 2772
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 65,
+        "status_counts": {
+          "503": 61,
+          "200": 4
+        },
+        "max_latency_ms": 2805
+      },
+      "seconds_to_first_success_after_clear": 0.38
+    },
+    {
+      "scenario": "llm_server_error",
+      "description": "Provider returns 500 on every call",
+      "phases": {
+        "baseline": {
+          "responses": 189,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 189
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 414,
+            "p95": 486
+          },
+          "max_latency_ms": 496
+        },
+        "fault": {
+          "responses": 64,
+          "success_rate": 10.9,
+          "status_counts": {
+            "200": 7,
+            "502": 57
+          },
+          "failure_categories": {
+            "MODEL_ERROR": 57
+          },
+          "latency_ms": {
+            "p50": 2507,
+            "p95": 2670
+          },
+          "max_latency_ms": 2708
+        },
+        "recovery": {
+          "responses": 570,
+          "success_rate": 99.1,
+          "status_counts": {
+            "502": 5,
+            "200": 565
+          },
+          "failure_categories": {
+            "MODEL_ERROR": 5
+          },
+          "latency_ms": {
+            "p50": 415,
+            "p95": 494
+          },
+          "max_latency_ms": 2677
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 64,
+        "status_counts": {
+          "502": 61,
+          "200": 3
+        },
+        "max_latency_ms": 2708
+      },
+      "seconds_to_first_success_after_clear": 0.46
+    },
+    {
+      "scenario": "llm_timeout",
+      "description": "Provider accepts the request and never answers",
+      "phases": {
+        "baseline": {
+          "responses": 189,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 189
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 424,
+            "p95": 492
+          },
+          "max_latency_ms": 573
+        },
+        "fault": {
+          "responses": 8,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 8
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 433,
+            "p95": 473
+          },
+          "max_latency_ms": 473
+        },
+        "recovery": {
+          "responses": 535,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 535
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 423,
+            "p95": 493
+          },
+          "max_latency_ms": 21767
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 8,
+        "status_counts": {
+          "200": 8
+        },
+        "max_latency_ms": 21767
+      },
+      "seconds_to_first_success_after_clear": 1.88
+    },
+    {
+      "scenario": "llm_malformed",
+      "description": "Provider answers with prose instead of SQL",
+      "phases": {
+        "baseline": {
+          "responses": 188,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 188
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 426,
+            "p95": 487
+          },
+          "max_latency_ms": 499
+        },
+        "fault": {
+          "responses": 130,
+          "success_rate": 4.6,
+          "status_counts": {
+            "200": 130
+          },
+          "failure_categories": {
+            "MALFORMED_OUTPUT": 124
+          },
+          "latency_ms": {
+            "p50": 1229,
+            "p95": 1378
+          },
+          "max_latency_ms": 1420
+        },
+        "recovery": {
+          "responses": 571,
+          "success_rate": 99.3,
+          "status_counts": {
+            "200": 571
+          },
+          "failure_categories": {
+            "MALFORMED_OUTPUT": 4
+          },
+          "latency_ms": {
+            "p50": 417,
+            "p95": 491
+          },
+          "max_latency_ms": 1410
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 130,
+        "status_counts": {
+          "200": 130
+        },
+        "max_latency_ms": 1420
+      },
+      "seconds_to_first_success_after_clear": 0.45
+    },
+    {
+      "scenario": "postgres_down",
+      "description": "PostgreSQL container stopped",
+      "phases": {
+        "baseline": {
+          "responses": 186,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 186
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 420,
+            "p95": 490
+          },
+          "max_latency_ms": 501
+        },
+        "fault": {
+          "responses": 156,
+          "success_rate": 5.1,
+          "status_counts": {
+            "200": 8,
+            "503": 148
+          },
+          "failure_categories": {
+            "CONNECTION_ERROR": 148
+          },
+          "latency_ms": {
+            "p50": 1030,
+            "p95": 1117
+          },
+          "max_latency_ms": 6009
+        },
+        "recovery": {
+          "responses": 582,
+          "success_rate": 99.0,
+          "status_counts": {
+            "503": 6,
+            "200": 576
+          },
+          "failure_categories": {
+            "CONNECTION_ERROR": 6
+          },
+          "latency_ms": {
+            "p50": 414,
+            "p95": 492
+          },
+          "max_latency_ms": 1105
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 156,
+        "status_counts": {
+          "503": 154,
+          "200": 2
+        },
+        "max_latency_ms": 6009
+      },
+      "seconds_to_first_success_after_clear": 0.58
+    },
+    {
+      "scenario": "redis_down",
+      "description": "Redis container stopped",
+      "phases": {
+        "baseline": {
+          "responses": 189,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 189
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 415,
+            "p95": 489
+          },
+          "max_latency_ms": 521
+        },
+        "fault": {
+          "responses": 399,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 399
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 411,
+            "p95": 483
+          },
+          "max_latency_ms": 534
+        },
+        "recovery": {
+          "responses": 584,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 584
+          },
+          "failure_categories": {},
+          "latency_ms": {
+            "p50": 414,
+            "p95": 486
+          },
+          "max_latency_ms": 543
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 399,
+        "status_counts": {
+          "200": 399
+        },
+        "max_latency_ms": 534
+      },
+      "seconds_to_first_success_after_clear": 0.04
+    }
+  ]
+}

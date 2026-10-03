@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-03T03:31:00+00:00",
+  "environment": "kind v0.24.0 single node on Docker Desktop; deploy/k8s-testing overlay (2 API replicas, 1 vCPU / 512Mi limits, in-cluster mock LLM 400ms +/-20%)",
+  "traffic": "scripts/load_test.py from an in-cluster pod: 10 closed-loop clients, one keep-alive connection each, 1500 requests per run",
+  "command": "scripts/k8s_disruption_test.sh <mode>",
+  "runs": {
+    "rollout": {
+      "disruption": "kubectl rollout restart (maxUnavailable 0, preStop 5s)",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms": {
+        "p50": 410.5,
+        "p95": 483.4,
+        "p99": 491.8
+      }
+    },
+    "delete": {
+      "disruption": "graceful pod delete",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms": {
+        "p50": 407.6,
+        "p95": 484.8,
+        "p99": 498.2
+      }
+    },
+    "kill": {
+      "disruption": "kubectl delete --grace-period=0 --force (kubelet still sends SIGTERM)",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1500
+      },
+      "error_rate": 0.0,
+      "latency_ok_ms": {
+        "p50": 412.9,
+        "p95": 485.6,
+        "p99": 497.5
+      }
+    },
+    "crash": {
+      "disruption": "SIGKILL via crictl stop --timeout 0 (no drain)",
+      "requests": 1500,
+      "status_counts": {
+        "200": 1489,
+        "RemoteProtocolError": 6,
+        "ConnectError": 5
+      },
+      "error_rate": 0.7,
+      "latency_ok_ms": {
+        "p50": 410.3,
+        "p95": 484.0,
+        "p99": 520.7
+      }
+    }
+  },
+  "network_policy_check": {
+    "unlabeled_pod_to_postgres": "blocked (timeout)",
+    "unlabeled_pod_to_redis": "blocked (timeout)",
+    "api_pod_to_postgres": "reachable",
+    "api_pod_to_redis": "reachable"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-03T03:12:37+00:00",
+  "target": "http://localhost:8002",
+  "workers": 8,
+  "phase_seconds": {
+    "baseline": 10,
+    "fault": 45.0,
+    "recovery": 40.0
+  },
+  "scenarios": [
+    {
+      "scenario": "llm_timeout",
+      "description": "Provider accepts the request and never answers",
+      "phases": {
+        "baseline": {
+          "responses": 191,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 191
+          },
+          "failure_categories": {},
+          "cache_hits": 0,
+          "latency_ms": {
+            "p50": 404,
+            "p95": 487
+          },
+          "max_latency_ms": 530
+        },
+        "fault": {
+          "responses": 16,
+          "success_rate": 50.0,
+          "status_counts": {
+            "200": 8,
+            "504": 8
+          },
+          "failure_categories": {
+            "TIMEOUT": 8
+          },
+          "cache_hits": 0,
+          "latency_ms": {
+            "p50": 31298,
+            "p95": 31487
+          },
+          "max_latency_ms": 31503
+        },
+        "recovery": {
+          "responses": 615,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 615
+          },
+          "failure_categories": {},
+          "cache_hits": 0,
+          "latency_ms": {
+            "p50": 409,
+            "p95": 489
+          },
+          "max_latency_ms": 21861
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 16,
+        "status_counts": {
+          "504": 8,
+          "200": 8
+        },
+        "max_latency_ms": 31503
+      },
+      "seconds_to_first_success_after_clear": 8.2
+    }
+  ]
+}

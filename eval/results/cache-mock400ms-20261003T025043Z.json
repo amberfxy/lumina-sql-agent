@@ -1,0 +1,203 @@
+{
+  "timestamp": "2026-10-03T02:50:43+00:00",
+  "target": "http://api-loadtest:8000",
+  "mock_llm": {
+    "latency_ms": 400.0,
+    "jitter": 0.2,
+    "fault": "none"
+  },
+  "questions": 58,
+  "rounds": 3,
+  "phases_median_of_rounds": {
+    "no_cache": {
+      "latency_ms": {
+        "mean": 418.9,
+        "p50": 408.3,
+        "p95": 496.7
+      },
+      "cache_hits": [
+        0,
+        0,
+        0
+      ],
+      "success_rate": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "avg_llm_tokens": 1077.4
+    },
+    "miss": {
+      "latency_ms": {
+        "mean": 422.3,
+        "p50": 420.5,
+        "p95": 489.1
+      },
+      "cache_hits": [
+        0,
+        0,
+        0
+      ],
+      "success_rate": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "avg_llm_tokens": 1077.4
+    },
+    "hit": {
+      "latency_ms": {
+        "mean": 3.0,
+        "p50": 2.6,
+        "p95": 5.8
+      },
+      "cache_hits": [
+        58,
+        58,
+        58
+      ],
+      "success_rate": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "avg_llm_tokens": 0.0
+    }
+  },
+  "miss_overhead_ms_p50": 12.2,
+  "hit_saving_ms_p50": 405.7,
+  "replay": {
+    "distribution": "zipf(s=1.1) over 58 gold questions (synthetic)",
+    "requests": 300,
+    "hit_rate": 84.0,
+    "with_cache": {
+      "requests": 300,
+      "cache_hits": 252,
+      "success_rate": 100.0,
+      "latency_ms": {
+        "mean": 71.4,
+        "p50": 3.2,
+        "p95": 469.7
+      },
+      "avg_llm_tokens": 170.0
+    },
+    "without_cache": {
+      "requests": 300,
+      "cache_hits": 0,
+      "success_rate": 100.0,
+      "latency_ms": {
+        "mean": 419.2,
+        "p50": 420.0,
+        "p95": 490.3
+      },
+      "avg_llm_tokens": 921.4
+    }
+  },
+  "raw_rounds": [
+    {
+      "no_cache": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 422.3,
+          "p50": 425.3,
+          "p95": 493.8
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "miss": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 422.7,
+          "p50": 420.5,
+          "p95": 489.1
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "hit": {
+        "requests": 58,
+        "cache_hits": 58,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 2.9,
+          "p50": 2.5,
+          "p95": 5.4
+        },
+        "avg_llm_tokens": 0.0
+      }
+    },
+    {
+      "no_cache": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 413.1,
+          "p50": 396.8,
+          "p95": 496.7
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "miss": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 415.1,
+          "p50": 412.8,
+          "p95": 479.8
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "hit": {
+        "requests": 58,
+        "cache_hits": 58,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 3.0,
+          "p50": 2.6,
+          "p95": 5.9
+        },
+        "avg_llm_tokens": 0.0
+      }
+    },
+    {
+      "no_cache": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 418.9,
+          "p50": 408.3,
+          "p95": 499.7
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "miss": {
+        "requests": 58,
+        "cache_hits": 0,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 422.3,
+          "p50": 423.3,
+          "p95": 495.8
+        },
+        "avg_llm_tokens": 1077.4
+      },
+      "hit": {
+        "requests": 58,
+        "cache_hits": 58,
+        "success_rate": 100.0,
+        "latency_ms": {
+          "mean": 3.0,
+          "p50": 2.7,
+          "p95": 5.8
+        },
+        "avg_llm_tokens": 0.0
+      }
+    }
+  ]
+}

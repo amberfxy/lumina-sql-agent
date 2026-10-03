@@ -1,0 +1,706 @@
+{
+  "label": "1cpu-admission-96-32-naive-clients",
+  "timestamp": "2026-10-03T02:32:19+00:00",
+  "target": "http://api-loadtest:8000",
+  "clients_honor_retry_after": false,
+  "mock_llm": {
+    "latency_ms": 400.0,
+    "jitter": 0.2,
+    "fault": "none",
+    "fault_rate": 0.0
+  },
+  "levels": [
+    {
+      "concurrency": 10,
+      "trials": 3,
+      "requests_per_trial": 200,
+      "throughput_ok_rps": 23.23,
+      "latency_ok_ms": {
+        "p50": 420.9,
+        "p95": 486.1,
+        "p99": 494.1
+      },
+      "shed_rate": 0.0,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 10.0,
+      "peak_queued": 0.0,
+      "range": {
+        "throughput_ok_rps": [
+          22.84,
+          23.65
+        ],
+        "p95": [
+          486.0,
+          494.6
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 10,
+          "requests": 200,
+          "wall_seconds": 8.61,
+          "throughput_ok_rps": 23.23,
+          "latency_ok_ms": {
+            "p50": 420.9,
+            "p95": 486.1,
+            "p99": 494.1
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 10.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 10,
+          "requests": 200,
+          "wall_seconds": 8.46,
+          "throughput_ok_rps": 23.65,
+          "latency_ok_ms": {
+            "p50": 416.4,
+            "p95": 486.0,
+            "p99": 491.4
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 10.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 10,
+          "requests": 200,
+          "wall_seconds": 8.76,
+          "throughput_ok_rps": 22.84,
+          "latency_ok_ms": {
+            "p50": 422.5,
+            "p95": 494.6,
+            "p99": 535.4
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 10.0,
+          "peak_queued": 0.0
+        }
+      ]
+    },
+    {
+      "concurrency": 25,
+      "trials": 3,
+      "requests_per_trial": 200,
+      "throughput_ok_rps": 55.16,
+      "latency_ok_ms": {
+        "p50": 414.4,
+        "p95": 530.9,
+        "p99": 578.1
+      },
+      "shed_rate": 0.0,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 25.0,
+      "peak_queued": 0.0,
+      "range": {
+        "throughput_ok_rps": [
+          54.9,
+          55.54
+        ],
+        "p95": [
+          526.1,
+          544.9
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 25,
+          "requests": 200,
+          "wall_seconds": 3.6,
+          "throughput_ok_rps": 55.54,
+          "latency_ok_ms": {
+            "p50": 410.7,
+            "p95": 530.9,
+            "p99": 557.8
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 25.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 25,
+          "requests": 200,
+          "wall_seconds": 3.64,
+          "throughput_ok_rps": 54.9,
+          "latency_ok_ms": {
+            "p50": 423.6,
+            "p95": 544.9,
+            "p99": 595.6
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 25.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 25,
+          "requests": 200,
+          "wall_seconds": 3.63,
+          "throughput_ok_rps": 55.16,
+          "latency_ok_ms": {
+            "p50": 414.4,
+            "p95": 526.1,
+            "p99": 578.1
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 200
+          },
+          "peak_inflight": 25.0,
+          "peak_queued": 0.0
+        }
+      ]
+    },
+    {
+      "concurrency": 50,
+      "trials": 3,
+      "requests_per_trial": 300,
+      "throughput_ok_rps": 101.04,
+      "latency_ok_ms": {
+        "p50": 439.5,
+        "p95": 607.1,
+        "p99": 682.0
+      },
+      "shed_rate": 0.0,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 50.0,
+      "peak_queued": 0.0,
+      "range": {
+        "throughput_ok_rps": [
+          100.98,
+          101.88
+        ],
+        "p95": [
+          592.7,
+          626.2
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 50,
+          "requests": 300,
+          "wall_seconds": 2.97,
+          "throughput_ok_rps": 100.98,
+          "latency_ok_ms": {
+            "p50": 431.4,
+            "p95": 626.2,
+            "p99": 682.0
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 300
+          },
+          "peak_inflight": 50.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 50,
+          "requests": 300,
+          "wall_seconds": 2.97,
+          "throughput_ok_rps": 101.04,
+          "latency_ok_ms": {
+            "p50": 439.5,
+            "p95": 607.1,
+            "p99": 651.2
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 300
+          },
+          "peak_inflight": 50.0,
+          "peak_queued": 0.0
+        },
+        {
+          "concurrency": 50,
+          "requests": 300,
+          "wall_seconds": 2.94,
+          "throughput_ok_rps": 101.88,
+          "latency_ok_ms": {
+            "p50": 447.7,
+            "p95": 592.7,
+            "p99": 685.7
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 300
+          },
+          "peak_inflight": 50.0,
+          "peak_queued": 0.0
+        }
+      ]
+    },
+    {
+      "concurrency": 100,
+      "trials": 3,
+      "requests_per_trial": 600,
+      "throughput_ok_rps": 166.46,
+      "latency_ok_ms": {
+        "p50": 489.2,
+        "p95": 854.0,
+        "p99": 1009.8
+      },
+      "shed_rate": 0.0,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 96.0,
+      "peak_queued": 4.0,
+      "range": {
+        "throughput_ok_rps": [
+          160.92,
+          168.55
+        ],
+        "p95": [
+          850.4,
+          883.4
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 100,
+          "requests": 600,
+          "wall_seconds": 3.73,
+          "throughput_ok_rps": 160.92,
+          "latency_ok_ms": {
+            "p50": 523.1,
+            "p95": 854.0,
+            "p99": 1009.8
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 600
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 4.0
+        },
+        {
+          "concurrency": 100,
+          "requests": 600,
+          "wall_seconds": 3.6,
+          "throughput_ok_rps": 166.46,
+          "latency_ok_ms": {
+            "p50": 489.2,
+            "p95": 850.4,
+            "p99": 996.0
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 600
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 4.0
+        },
+        {
+          "concurrency": 100,
+          "requests": 600,
+          "wall_seconds": 3.56,
+          "throughput_ok_rps": 168.55,
+          "latency_ok_ms": {
+            "p50": 473.8,
+            "p95": 883.4,
+            "p99": 1042.0
+          },
+          "shed_rate": 0.0,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 600
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 4.0
+        }
+      ]
+    },
+    {
+      "concurrency": 150,
+      "trials": 3,
+      "requests_per_trial": 900,
+      "throughput_ok_rps": 73.11,
+      "latency_ok_ms": {
+        "p50": 977.4,
+        "p95": 1260.6,
+        "p99": 1312.8
+      },
+      "shed_rate": 85.8,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 96.0,
+      "peak_queued": 32.0,
+      "range": {
+        "throughput_ok_rps": [
+          71.04,
+          86.1
+        ],
+        "p95": [
+          1110.8,
+          1293.9
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 150,
+          "requests": 900,
+          "wall_seconds": 1.75,
+          "throughput_ok_rps": 73.11,
+          "latency_ok_ms": {
+            "p50": 977.4,
+            "p95": 1260.6,
+            "p99": 1312.8
+          },
+          "shed_rate": 85.8,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 772,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 150,
+          "requests": 900,
+          "wall_seconds": 1.49,
+          "throughput_ok_rps": 86.1,
+          "latency_ok_ms": {
+            "p50": 863.3,
+            "p95": 1110.8,
+            "p99": 1173.1
+          },
+          "shed_rate": 85.8,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 772,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 150,
+          "requests": 900,
+          "wall_seconds": 1.8,
+          "throughput_ok_rps": 71.04,
+          "latency_ok_ms": {
+            "p50": 1007.2,
+            "p95": 1293.9,
+            "p99": 1393.5
+          },
+          "shed_rate": 85.8,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 772,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        }
+      ]
+    },
+    {
+      "concurrency": 200,
+      "trials": 3,
+      "requests_per_trial": 1200,
+      "throughput_ok_rps": 72.27,
+      "latency_ok_ms": {
+        "p50": 1122.3,
+        "p95": 1309.1,
+        "p99": 1414.8
+      },
+      "shed_rate": 89.3,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 96.0,
+      "peak_queued": 32.0,
+      "range": {
+        "throughput_ok_rps": [
+          72.14,
+          72.86
+        ],
+        "p95": [
+          1304.3,
+          1373.9
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 200,
+          "requests": 1200,
+          "wall_seconds": 1.76,
+          "throughput_ok_rps": 72.86,
+          "latency_ok_ms": {
+            "p50": 1090.1,
+            "p95": 1373.9,
+            "p99": 1501.6
+          },
+          "shed_rate": 89.3,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1072,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 200,
+          "requests": 1200,
+          "wall_seconds": 1.77,
+          "throughput_ok_rps": 72.14,
+          "latency_ok_ms": {
+            "p50": 1133.3,
+            "p95": 1304.3,
+            "p99": 1414.8
+          },
+          "shed_rate": 89.3,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1072,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 200,
+          "requests": 1200,
+          "wall_seconds": 1.77,
+          "throughput_ok_rps": 72.27,
+          "latency_ok_ms": {
+            "p50": 1122.3,
+            "p95": 1309.1,
+            "p99": 1410.8
+          },
+          "shed_rate": 89.3,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1072,
+            "200": 128
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        }
+      ]
+    },
+    {
+      "concurrency": 300,
+      "trials": 3,
+      "requests_per_trial": 1800,
+      "throughput_ok_rps": 66.35,
+      "latency_ok_ms": {
+        "p50": 1543.4,
+        "p95": 1832.3,
+        "p99": 1956.1
+      },
+      "shed_rate": 91.1,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 96.0,
+      "peak_queued": 32.0,
+      "range": {
+        "throughput_ok_rps": [
+          52.73,
+          68.59
+        ],
+        "p95": [
+          1797.4,
+          3299.4
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 300,
+          "requests": 1800,
+          "wall_seconds": 2.33,
+          "throughput_ok_rps": 68.59,
+          "latency_ok_ms": {
+            "p50": 1543.4,
+            "p95": 1832.3,
+            "p99": 1956.1
+          },
+          "shed_rate": 91.1,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1640,
+            "200": 160
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 31.0
+        },
+        {
+          "concurrency": 300,
+          "requests": 1800,
+          "wall_seconds": 2.41,
+          "throughput_ok_rps": 66.35,
+          "latency_ok_ms": {
+            "p50": 1486.6,
+            "p95": 1797.4,
+            "p99": 1932.5
+          },
+          "shed_rate": 91.1,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1640,
+            "200": 160
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 300,
+          "requests": 1800,
+          "wall_seconds": 4.29,
+          "throughput_ok_rps": 52.73,
+          "latency_ok_ms": {
+            "p50": 2161.7,
+            "p95": 3299.4,
+            "p99": 3404.0
+          },
+          "shed_rate": 87.4,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 1574,
+            "200": 226
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        }
+      ]
+    },
+    {
+      "concurrency": 400,
+      "trials": 3,
+      "requests_per_trial": 2400,
+      "throughput_ok_rps": 60.45,
+      "latency_ok_ms": {
+        "p50": 1903.3,
+        "p95": 2658.4,
+        "p99": 2790.4
+      },
+      "shed_rate": 90.8,
+      "error_rate": 0.0,
+      "agent_success_rate": 100.0,
+      "peak_inflight": 96.0,
+      "peak_queued": 32.0,
+      "range": {
+        "throughput_ok_rps": [
+          58.8,
+          63.86
+        ],
+        "p95": [
+          2559.9,
+          2745.5
+        ]
+      },
+      "raw_trials": [
+        {
+          "concurrency": 400,
+          "requests": 2400,
+          "wall_seconds": 3.33,
+          "throughput_ok_rps": 58.8,
+          "latency_ok_ms": {
+            "p50": 2291.1,
+            "p95": 2658.4,
+            "p99": 2790.4
+          },
+          "shed_rate": 91.8,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "200": 196,
+            "429": 2204
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 400,
+          "requests": 2400,
+          "wall_seconds": 3.51,
+          "throughput_ok_rps": 63.86,
+          "latency_ok_ms": {
+            "p50": 1903.3,
+            "p95": 2559.9,
+            "p99": 2657.7
+          },
+          "shed_rate": 90.7,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 2176,
+            "200": 224
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        },
+        {
+          "concurrency": 400,
+          "requests": 2400,
+          "wall_seconds": 3.64,
+          "throughput_ok_rps": 60.45,
+          "latency_ok_ms": {
+            "p50": 1887.7,
+            "p95": 2745.5,
+            "p99": 2886.3
+          },
+          "shed_rate": 90.8,
+          "error_rate": 0.0,
+          "agent_success_rate": 100.0,
+          "status_counts": {
+            "429": 2180,
+            "200": 220
+          },
+          "peak_inflight": 96.0,
+          "peak_queued": 32.0
+        }
+      ]
+    }
+  ]
+}

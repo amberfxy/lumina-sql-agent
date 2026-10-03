@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-03T03:10:57+00:00",
+  "target": "http://localhost:8002",
+  "workers": 8,
+  "phase_seconds": {
+    "baseline": 10,
+    "fault": 20,
+    "recovery": 30
+  },
+  "scenarios": [
+    {
+      "scenario": "redis_down",
+      "description": "Redis container stopped (traffic uses the query cache)",
+      "phases": {
+        "baseline": {
+          "responses": 5014,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 5014
+          },
+          "failure_categories": {},
+          "cache_hits": 5014,
+          "latency_ms": {
+            "p50": 13,
+            "p95": 35
+          },
+          "max_latency_ms": 114
+        },
+        "fault": {
+          "responses": 547,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 547
+          },
+          "failure_categories": {},
+          "cache_hits": 166,
+          "latency_ms": {
+            "p50": 383,
+            "p95": 487
+          },
+          "max_latency_ms": 503
+        },
+        "recovery": {
+          "responses": 10541,
+          "success_rate": 100.0,
+          "status_counts": {
+            "200": 10541
+          },
+          "failure_categories": {},
+          "cache_hits": 10343,
+          "latency_ms": {
+            "p50": 13,
+            "p95": 36
+          },
+          "max_latency_ms": 503
+        }
+      },
+      "requests_started_during_fault": {
+        "count": 547,
+        "status_counts": {
+          "200": 547
+        },
+        "max_latency_ms": 503
+      },
+      "seconds_to_first_success_after_clear": 0.05
+    }
+  ]
+}
