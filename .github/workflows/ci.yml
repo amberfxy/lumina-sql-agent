@@ -34,7 +34,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - run: pytest -q --cov=src --cov=api --cov=eval --cov-report=term-missing
+      - run: pytest -q --cov=src --cov=api --cov=eval --cov=mcp_server --cov-report=term-missing
 
   security:
     runs-on: ubuntu-latest
@@ -46,8 +46,8 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - name: SQL guard unit and adversarial tests
-        run: pytest -q tests/test_sql_guard.py tests/test_failures.py
+      - name: SQL guard unit and adversarial tests (direct and through the MCP tools)
+        run: pytest -q tests/test_sql_guard.py tests/test_failures.py tests/test_mcp.py
       - name: Guard suite (fails on any unrejected payload or gold false positive)
         run: python scripts/run_eval.py guard
       - uses: actions/upload-artifact@v4
@@ -108,11 +108,15 @@ jobs:
         run: python scripts/run_eval.py validate-gold
       - name: Scripted failure-mode suite (simulated LLM, real Postgres)
         run: python scripts/run_eval.py scripted
+      - name: MCP tool-session suite (FastMCP client, real Postgres, simulated LLM)
+        run: python scripts/run_eval.py mcp
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: scripted-eval-report
-          path: eval/results/scripted-*
+          name: eval-reports
+          path: |
+            eval/results/scripted-*
+            eval/results/mcp-*
 
   config-validation:
     runs-on: ubuntu-latest

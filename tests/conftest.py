@@ -12,6 +12,7 @@ from src.agent import LLMResponse
 from src.cache import RedisCache
 from src.db_executor import DatabaseExecutionError, ExecutionResult
 from src.failures import FailureCategory
+from src.schema_manager import ColumnMetadata, SchemaCatalog, TableMetadata
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -110,6 +111,13 @@ class FakeSchemaManager:
 
     def get_pruned_schema(self, user_query: str, backend: DatabaseBackend | None = None) -> str:
         return self.schema
+
+    def get_catalog(self, backend: DatabaseBackend | None = None) -> SchemaCatalog:
+        tables = [
+            TableMetadata(name=name, columns=(ColumnMetadata(f"{name.rstrip('s')}_id", "INTEGER", False, True),))
+            for name in sorted(self.tables)
+        ]
+        return SchemaCatalog(backend=backend or DatabaseBackend.POSTGRES, tables=tables)
 
 
 @pytest.fixture

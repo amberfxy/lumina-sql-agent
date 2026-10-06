@@ -16,6 +16,7 @@ RUN useradd --create-home --uid 10001 lumina
 
 COPY config.py run_api.py app.py ./
 COPY api ./api
+COPY mcp_server ./mcp_server
 COPY src ./src
 COPY eval ./eval
 COPY scripts ./scripts

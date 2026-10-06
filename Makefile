@@ -6,7 +6,7 @@ K8S_DIR ?= deploy/k8s
 KUBECTL = kubectl --context kind-$(KIND_CLUSTER)
 CONCURRENCY ?= 8
 
-.PHONY: up up-all down logs test lint eval eval-single-shot eval-guard eval-scripted validate-gold \
+.PHONY: up up-all down logs test lint eval eval-single-shot eval-guard eval-scripted eval-mcp mcp validate-gold \
 	loadtest-up loadtest bench-cache resilience k8s-up k8s-down k8s-status k8s-disruption
 
 up:  ## API, UI, Postgres (seeded), Redis
@@ -37,6 +37,12 @@ eval-guard:  ## SQL guard vs adversarial corpus + gold false positives (no LLM)
 
 eval-scripted:  ## Deterministic failure-mode suite against Postgres (no LLM)
 	$(EVAL_RUN) scripted
+
+eval-mcp:  ## MCP tool sessions through a FastMCP client against Postgres (no LLM)
+	$(EVAL_RUN) mcp
+
+mcp:  ## MCP server over stdio inside the Compose network (for MCP client configs)
+	@docker compose run --rm -T api python -m mcp_server.server
 
 eval:  ## Real-model evaluation on the categorized dataset (needs an LLM key in .env)
 	$(EVAL_RUN) model --concurrency $(CONCURRENCY)

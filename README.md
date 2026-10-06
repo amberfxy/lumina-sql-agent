@@ -19,7 +19,8 @@ blips are retried without the model; unsafe queries stop immediately.
 | Capacity (1 vCPU replica, mock LLM 400 ms) | about 180-200 req/s at saturation; knee between 100 and 150 concurrent requests |
 | Query cache | hit p50 2.6 ms vs 408 ms uncached, 0 LLM tokens; miss overhead within noise |
 | Disruption (kind, 2 replicas) | 0/4500 failed requests across 3 rolling restarts (preStop drain); 9/1500 on a hard SIGKILL |
-| Tests | 289 passing, 90% line coverage (unit + Postgres/Redis/DynamoDB Local integration) |
+| MCP interface | 32/32 scripted tool sessions (41 calls) pass; 11/11 unsafe calls rejected, 0 reached the database |
+| Tests | 380 passing, 91% line coverage (unit + Postgres/Redis/DynamoDB Local integration) |
 
 Real-model accuracy is **not** reported yet: the harness and 97-case dataset are ready
 (`make eval`), but no run with an API key has been done.
@@ -31,6 +32,8 @@ flowchart LR
     C[Client / Streamlit UI] --> MW[Request ID, early shed, metrics]
     MW --> AUTH[API key + rate limit]
     AUTH --> ADM[Admission: bounded slots + queue]
+    M[MCP client / AI agent] --> MCP[MCP server - FastMCP tools]
+    MCP --> ADM
     ADM --> AG[Agent loop]
     AG --> SM[Schema manager + access boundary]
     AG <--> R[(Redis cache)]
@@ -94,12 +97,100 @@ No API key? `make loadtest-up` starts the stack against a mock LLM on `:8002`.
 | `POST` | `/api/v1/query/stream` | SSE stream (`status`, `schema`, `llm_token`, `query`, `error`, `result`) |
 | `POST` | `/api/v1/cache/invalidate` | Drop cached schemas and generated queries (authenticated) |
 
+## MCP server
+
+LuminaSQL also speaks the [Model Context Protocol](https://modelcontextprotocol.io), so AI
+agents (Claude Desktop, Claude Code, IDE agents, custom MCP clients) can use it as typed
+tools. The MCP server is a thin adapter in `mcp_server/`: it calls the same `SchemaManager`,
+`SQLGuard`, `DatabaseExecutor`, `LuminaSQLAgent`, and `AdmissionController` the REST API uses,
+and has no SQL generation, validation, or execution logic of its own.
+
+```
+MCP client --> mcp_server (FastMCP) --> SchemaManager / SQLGuard / DatabaseExecutor / LuminaSQLAgent --> PostgreSQL, Redis
+REST client -> api (FastAPI) -------/
+```
+
+**Run it.** `fastmcp` is in `requirements.txt` (Python 3.11+):
+
+```bash
+pip install -r requirements.txt
+python -m mcp_server.server                                # stdio, reads the same env/.env as the API
+python -m mcp_server.server --transport http --port 8765   # streamable HTTP at http://127.0.0.1:8765/mcp
+make mcp                                                   # stdio inside the Compose network, as lumina_reader
+```
+
+Over HTTP, requests must send `Authorization: Bearer <key>` when `API_KEYS` is set, and the
+server refuses to bind a non-loopback address without it.
+
+**Client configuration** (Claude Desktop `claude_desktop_config.json`; the Compose stack must be up):
+
+```json
+{
+  "mcpServers": {
+    "lumina-sql": {
+      "command": "docker",
+      "args": ["compose", "-f", "/path/to/lumina-sql-agent/docker-compose.yml",
+               "run", "--rm", "-T", "api", "python", "-m", "mcp_server.server"]
+    }
+  }
+}
+```
+
+With Claude Code: `claude mcp add lumina-sql -- docker compose -f /path/to/lumina-sql-agent/docker-compose.yml run --rm -T api python -m mcp_server.server`.
+
+**Tools** (all read-only; inputs are validated by the tool schema, and unknown arguments are rejected):
+
+| Tool | Input | Output |
+| --- | --- | --- |
+| `get_schema` | `backend` (optional, `postgres` or `dynamodb`) | `tables[]` with `name`, `description`, and `columns[]` (`name`, `type`, `nullable`, `primary_key`, `foreign_key`), after `ALLOWED_TABLES` / `DENIED_COLUMNS` |
+| `validate_sql` | `sql`, `backend` | `valid`, `reason`, `normalized_sql`, `failure` (`category`, `source`, `policy`, `message`) |
+| `execute_readonly_query` | `sql`, `backend` | `success`, `status` (`executed`, `rejected`, `failed`), `columns`, `rows`, `row_count`, `truncated`, `row_limit`, `failure`, `request_id` |
+| `ask_database` | `question`, `backend` | `success`, `status` (`success`, `self_corrected`, `cache_hit`, `rejected`, `failed`), `generated_sql`, `final_sql`, `retry_count`, `attempts[]`, rows, `failure`, token usage, `request_id` |
+
+Query-level outcomes (rejected, failed) come back as structured results with the failure
+category and its retry `policy` (`llm_correctable`: fix and retry, `transient`: retry as-is,
+`terminal`: stop). Missing dependencies (empty schema catalog, no LLM key, server busy)
+are MCP tool errors. Unexpected exceptions are masked so internals never reach the client.
+
+**Example agent workflow.** User: *"Which category had the highest revenue?"*
+
+1. `get_schema` → sees `order_items` (with the revenue formula in its description), `products`, `categories`.
+2. Either `ask_database` with the question, or writes the join itself, calls `validate_sql`,
+   then `execute_readonly_query`. If execution fails with `UNKNOWN_COLUMN` (`llm_correctable`),
+   it fixes the column and retries; an `UNSAFE_QUERY` (`terminal`) is not retried.
+3. Answers from `rows`, citing `final_sql`.
+
+**Security model.** MCP calls cross the same boundary as REST calls: the sqlglot AST guard
+with the known-table check, the guard again inside `DatabaseExecutor`, a `READ ONLY`
+transaction, the `lumina_reader` role, the statement timeout, the row cap, admission control,
+and the failure taxonomy. MCP never enables mutations, even when `MUTATIONS_ENABLED=true`.
+Schema output contains only catalog metadata, never connection settings. Tests cover the
+full 68-payload adversarial corpus through `execute_readonly_query`, the executor's guard when
+the adapter's own validation is bypassed, and (against Postgres) writes blocked by the
+transaction and role with both guards disabled.
+
+**Tests and evaluation:**
+
+```bash
+pytest tests/test_mcp.py                         # tool behavior, adversarial SQL, malformed inputs (no DB, no LLM)
+LUMINA_INTEGRATION=1 pytest tests/test_integration_mcp.py   # against seeded Postgres as lumina_reader
+make eval-mcp                                    # 32 scripted tool sessions: eval/datasets/mcp.jsonl
+```
+
+`make eval-mcp` drives a real FastMCP client through fixed tool sequences (schema discovery,
+valid queries checked against gold results, unsafe SQL, invalid SQL, self-correction,
+multi-step sessions, malformed inputs) against real Postgres with a scripted LLM. It reports
+tool-call success, valid-query execution, unsafe-query rejection, unsafe calls that reached
+the database, and self-correction success rates. It measures the interface and the pipeline,
+not model accuracy or a model's tool selection. The latest report is in `eval/results/mcp-*.json`.
+
 ## Evaluation and benchmarks
 
 ```bash
 make eval-guard        # SQL guard vs 68 adversarial payloads + gold false positives (no LLM)
 make validate-gold     # every gold query executes and returns rows
 make eval-scripted     # 30 deterministic agent scenarios against real Postgres
+make eval-mcp          # 32 MCP tool sessions through a FastMCP client against real Postgres
 make eval              # real model on the 97-case categorized dataset (needs a key)
 make eval-single-shot  # same with self-correction off, for the ablation
 
@@ -116,8 +207,8 @@ Methodology, datasets, metric definitions, and all measured numbers are in
 
 `make test` runs unit tests (fake LLM/DB) and integration tests (seeded Postgres, Redis,
 the read-only role). GitHub Actions runs lint, unit tests with coverage, a security job
-(guard tests and the adversarial suite), integration tests as `lumina_reader` with gold
-validation and the scripted suite, config validation (`promtool`, dashboard JSON, Compose),
+(guard tests, MCP tool tests, and the adversarial suite), integration tests as `lumina_reader` with gold
+validation, the scripted suite, and the MCP suite, config validation (`promtool`, dashboard JSON, Compose),
 a container end-to-end test through the mock LLM, and a kind job that deploys the manifests,
 checks the NetworkPolicy, and does a rolling restart under traffic. The paid real-model
 eval is a separate manually dispatched workflow.
@@ -143,6 +234,7 @@ See `.env.example` and `config.py`. Notable variables:
 
 ```
 api/              FastAPI app: middleware, auth, admission, status mapping
+mcp_server/       FastMCP server: MCP tools over the same services as the API
 src/              agent, SQL guard, failure taxonomy, admission, executor, schema manager, cache, metrics
 eval/             datasets, harness, comparator, scripted LLM, committed results
 scripts/          run_eval, mock LLM, load test, cache benchmark, resilience, k8s disruption
@@ -162,3 +254,6 @@ docs/             architecture, security, failure model, evaluation, runbook, au
   shared store.
 - Schema pruning is lexical, which is enough for small schemas but not hundreds of tables.
 - Single-tenant: no row-level security or per-user data scoping.
+- MCP: the MCP server is its own process with its own admission limits (same settings as
+  the API); per-client rate limiting applies only to the REST API. HTTP auth is static API keys, not OAuth. Tool selection
+  by a real model is not evaluated (the MCP suite uses fixed tool sequences).

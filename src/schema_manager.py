@@ -98,6 +98,10 @@ class SchemaManager:
         """Tables the model may query (after the allowlist); empty if the catalog is unavailable."""
         return {table.name for table in self._get_catalog(backend or DatabaseBackend.POSTGRES).tables}
 
+    def get_catalog(self, backend: DatabaseBackend | None = None) -> SchemaCatalog:
+        """The full catalog after the access boundary (ALLOWED_TABLES / DENIED_COLUMNS)."""
+        return self._get_catalog(backend or DatabaseBackend.POSTGRES)
+
     def get_pruned_schema(self, user_query: str, backend: DatabaseBackend | None = None) -> str:
         """Return a markdown schema snippet relevant to the user query."""
         backend = backend or DatabaseBackend.POSTGRES

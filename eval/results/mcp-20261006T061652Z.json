@@ -1,0 +1,956 @@
+{
+  "summary": {
+    "cases": 32,
+    "tool_calls": 41,
+    "task_completion_rate": 100.0,
+    "tool_call_success_rate": 100.0,
+    "valid_query_execution_rate": 100.0,
+    "valid_query_steps": 12,
+    "unsafe_query_rejection_rate": 100.0,
+    "unsafe_query_steps": 11,
+    "unsafe_queries_reaching_database": 0,
+    "malformed_input_rejection_rate": 100.0,
+    "self_correction_success_rate": 75.0,
+    "self_correction_steps": 4,
+    "by_scenario": {
+      "invalid_sql": {
+        "cases": 4,
+        "pass_rate": 100.0
+      },
+      "malformed_input": {
+        "cases": 2,
+        "pass_rate": 100.0
+      },
+      "multi_step": {
+        "cases": 3,
+        "pass_rate": 100.0
+      },
+      "nl_end_to_end": {
+        "cases": 3,
+        "pass_rate": 100.0
+      },
+      "schema_discovery": {
+        "cases": 2,
+        "pass_rate": 100.0
+      },
+      "self_correction": {
+        "cases": 4,
+        "pass_rate": 100.0
+      },
+      "unsafe_rejection": {
+        "cases": 10,
+        "pass_rate": 100.0
+      },
+      "valid_execution": {
+        "cases": 4,
+        "pass_rate": 100.0
+      }
+    },
+    "by_tool": {
+      "ask_database": {
+        "calls": 9,
+        "pass_rate": 100.0
+      },
+      "execute_readonly_query": {
+        "calls": 24,
+        "pass_rate": 100.0
+      },
+      "get_schema": {
+        "calls": 4,
+        "pass_rate": 100.0
+      },
+      "validate_sql": {
+        "calls": 4,
+        "pass_rate": 100.0
+      }
+    },
+    "failed_steps": [],
+    "suite": "mcp",
+    "label": "MCP tool sessions (FastMCP in-memory client, real PostgreSQL, scripted LLM)",
+    "timestamp": "2026-10-06T06:16:52+00:00",
+    "dataset": "eval/datasets/mcp.jsonl",
+    "wall_clock_seconds": 0.59
+  },
+  "cases": [
+    {
+      "id": "m01",
+      "scenario": "schema_discovery",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m01",
+          "scenario": "schema_discovery",
+          "index": 0,
+          "tool": "get_schema",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m02",
+      "scenario": "schema_discovery",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m02",
+          "scenario": "schema_discovery",
+          "index": 0,
+          "tool": "get_schema",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m02",
+          "scenario": "schema_discovery",
+          "index": 1,
+          "tool": "validate_sql",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m03",
+      "scenario": "valid_execution",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m03",
+          "scenario": "valid_execution",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m04",
+      "scenario": "valid_execution",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m04",
+          "scenario": "valid_execution",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m05",
+      "scenario": "valid_execution",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m05",
+          "scenario": "valid_execution",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m06",
+      "scenario": "valid_execution",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m06",
+          "scenario": "valid_execution",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m07",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m07",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m08",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m08",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m09",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m09",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m10",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m10",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m11",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m11",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m12",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m12",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m13",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m13",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m14",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m14",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m15",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m15",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m16",
+      "scenario": "unsafe_rejection",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m16",
+          "scenario": "unsafe_rejection",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m17",
+      "scenario": "invalid_sql",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m17",
+          "scenario": "invalid_sql",
+          "index": 0,
+          "tool": "validate_sql",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": "SYNTAX_ERROR",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m18",
+      "scenario": "invalid_sql",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m18",
+          "scenario": "invalid_sql",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNKNOWN_TABLE",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m19",
+      "scenario": "invalid_sql",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m19",
+          "scenario": "invalid_sql",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "failed",
+          "category": "UNKNOWN_COLUMN",
+          "reached_database": true,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m20",
+      "scenario": "invalid_sql",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m20",
+          "scenario": "invalid_sql",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "failed",
+          "category": "SEMANTIC_ERROR",
+          "reached_database": true,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m21",
+      "scenario": "self_correction",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m21",
+          "scenario": "self_correction",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "self_corrected",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": true,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m22",
+      "scenario": "self_correction",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m22",
+          "scenario": "self_correction",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "self_corrected",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": true,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m23",
+      "scenario": "self_correction",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m23",
+          "scenario": "self_correction",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "self_corrected",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": true,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m24",
+      "scenario": "self_correction",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m24",
+          "scenario": "self_correction",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "failed",
+          "category": "UNKNOWN_COLUMN",
+          "reached_database": true,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": true,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m25",
+      "scenario": "nl_end_to_end",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m25",
+          "scenario": "nl_end_to_end",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "success",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m26",
+      "scenario": "nl_end_to_end",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m26",
+          "scenario": "nl_end_to_end",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNSAFE_QUERY",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": true,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m27",
+      "scenario": "nl_end_to_end",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m27",
+          "scenario": "nl_end_to_end",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "rejected",
+          "category": "UNANSWERABLE",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m28",
+      "scenario": "multi_step",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m28",
+          "scenario": "multi_step",
+          "index": 0,
+          "tool": "get_schema",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m28",
+          "scenario": "multi_step",
+          "index": 1,
+          "tool": "validate_sql",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": "UNKNOWN_TABLE",
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m28",
+          "scenario": "multi_step",
+          "index": 2,
+          "tool": "validate_sql",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m28",
+          "scenario": "multi_step",
+          "index": 3,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m29",
+      "scenario": "multi_step",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m29",
+          "scenario": "multi_step",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "failed",
+          "category": "SEMANTIC_ERROR",
+          "reached_database": true,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m29",
+          "scenario": "multi_step",
+          "index": 1,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m30",
+      "scenario": "multi_step",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m30",
+          "scenario": "multi_step",
+          "index": 0,
+          "tool": "get_schema",
+          "passed": true,
+          "is_error": false,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m30",
+          "scenario": "multi_step",
+          "index": 1,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": false,
+          "status": "success",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m30",
+          "scenario": "multi_step",
+          "index": 2,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": false,
+          "status": "executed",
+          "category": null,
+          "reached_database": true,
+          "expected_success": true,
+          "expected_unsafe": false,
+          "expected_input_error": false,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m31",
+      "scenario": "malformed_input",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m31",
+          "scenario": "malformed_input",
+          "index": 0,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": true,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": true,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m31",
+          "scenario": "malformed_input",
+          "index": 1,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": true,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": true,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    },
+    {
+      "id": "m32",
+      "scenario": "malformed_input",
+      "passed": true,
+      "steps": [
+        {
+          "case_id": "m32",
+          "scenario": "malformed_input",
+          "index": 0,
+          "tool": "ask_database",
+          "passed": true,
+          "is_error": true,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": true,
+          "had_correctable_attempt": false,
+          "problems": ""
+        },
+        {
+          "case_id": "m32",
+          "scenario": "malformed_input",
+          "index": 1,
+          "tool": "execute_readonly_query",
+          "passed": true,
+          "is_error": true,
+          "status": null,
+          "category": null,
+          "reached_database": false,
+          "expected_success": false,
+          "expected_unsafe": false,
+          "expected_input_error": true,
+          "had_correctable_attempt": false,
+          "problems": ""
+        }
+      ]
+    }
+  ]
+}
